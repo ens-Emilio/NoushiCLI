@@ -28,14 +28,16 @@ import { findGitPaths } from "./footer-data-provider.ts";
 import {
 	DefaultPackageManager,
 	type PackageInstallFailure,
+	type PackageManager,
 	type PathMetadata,
 	type ResolvedResource,
 } from "./package-manager.ts";
-import type { PromptTemplate } from "./prompt-templates.ts";
-import { loadPromptTemplates } from "./prompt-templates.ts";
+import type { OpenCodeCommand, PromptTemplate } from "./prompt-templates.ts";
+import { loadOpenCodeCommands, loadPromptTemplates } from "./prompt-templates.ts";
 import { SettingsManager } from "./settings-manager.ts";
 import type { Skill } from "./skills.ts";
 import { loadSkills } from "./skills.ts";
+import { BUILTIN_SLASH_COMMANDS } from "./slash-commands.ts";
 import {
 	BUILTIN_PATH_PREFIX,
 	createSourceInfo,
@@ -182,6 +184,7 @@ export interface ResourceLoader {
 	getExtensions(): LoadExtensionsResult;
 	getSkills(): { skills: Skill[]; diagnostics: ResourceDiagnostic[] };
 	getPrompts(): { prompts: PromptTemplate[]; diagnostics: ResourceDiagnostic[] };
+	getCommands?(): { commands: OpenCodeCommand[]; diagnostics: ResourceDiagnostic[] };
 	getThemes(): { themes: Theme[]; diagnostics: ResourceDiagnostic[] };
 	getAgentsFiles(): { agentsFiles: Array<{ path: string; content: string }> };
 	getSystemPrompt(): string | undefined;
@@ -189,6 +192,7 @@ export interface ResourceLoader {
 	getAppendSystemPrompt(): string[];
 	getAppendSystemPromptSources(): Array<{ path: string }>;
 	extendResources(paths: ResourceExtensionPaths): void;
+	getPackageManager?(): PackageManager | undefined;
 	reload(options?: ResourceLoaderReloadOptions): Promise<void>;
 }
 
@@ -356,6 +360,10 @@ export interface DefaultResourceLoaderOptions {
 		prompts: PromptTemplate[];
 		diagnostics: ResourceDiagnostic[];
 	};
+	opencodeCommandsOverride?: (base: { commands: OpenCodeCommand[]; diagnostics: ResourceDiagnostic[] }) => {
+		commands: OpenCodeCommand[];
+		diagnostics: ResourceDiagnostic[];
+	};
 	themesOverride?: (base: { themes: Theme[]; diagnostics: ResourceDiagnostic[] }) => {
 		themes: Theme[];
 		diagnostics: ResourceDiagnostic[];
@@ -396,6 +404,7 @@ export class DefaultResourceLoader implements ResourceLoader {
 		prompts: PromptTemplate[];
 		diagnostics: ResourceDiagnostic[];
 	};
+	private opencodeCommandsOverride?: DefaultResourceLoaderOptions["opencodeCommandsOverride"];
 	private themesOverride?: (base: { themes: Theme[]; diagnostics: ResourceDiagnostic[] }) => {
 		themes: Theme[];
 		diagnostics: ResourceDiagnostic[];
@@ -403,6 +412,8 @@ export class DefaultResourceLoader implements ResourceLoader {
 	private agentsFilesOverride?: (base: { agentsFiles: Array<{ path: string; content: string }> }) => {
 		agentsFiles: Array<{ path: string; content: string }>;
 	};
+	private commands: OpenCodeCommand[];
+	private commandDiagnostics: ResourceDiagnostic[];
 	private systemPromptOverride?: (base: string | undefined) => string | undefined;
 	private appendSystemPromptOverride?: (base: string[]) => string[];
 
@@ -456,6 +467,7 @@ export class DefaultResourceLoader implements ResourceLoader {
 		this.extensionsOverride = options.extensionsOverride;
 		this.skillsOverride = options.skillsOverride;
 		this.promptsOverride = options.promptsOverride;
+		this.opencodeCommandsOverride = options.opencodeCommandsOverride;
 		this.themesOverride = options.themesOverride;
 		this.agentsFilesOverride = options.agentsFilesOverride;
 		this.systemPromptOverride = options.systemPromptOverride;
@@ -466,6 +478,8 @@ export class DefaultResourceLoader implements ResourceLoader {
 		this.skillDiagnostics = [];
 		this.prompts = [];
 		this.promptDiagnostics = [];
+		this.commands = [];
+		this.commandDiagnostics = [];
 		this.themes = [];
 		this.themeDiagnostics = [];
 		this.agentsFiles = [];
@@ -492,6 +506,9 @@ export class DefaultResourceLoader implements ResourceLoader {
 	getPrompts(): { prompts: PromptTemplate[]; diagnostics: ResourceDiagnostic[] } {
 		return { prompts: this.prompts, diagnostics: this.promptDiagnostics };
 	}
+	getCommands(): { commands: OpenCodeCommand[]; diagnostics: ResourceDiagnostic[] } {
+		return { commands: this.commands, diagnostics: this.commandDiagnostics };
+	}
 
 	getThemes(): { themes: Theme[]; diagnostics: ResourceDiagnostic[] } {
 		return { themes: this.themes, diagnostics: this.themeDiagnostics };
@@ -515,6 +532,10 @@ export class DefaultResourceLoader implements ResourceLoader {
 
 	getAppendSystemPromptSources(): Array<{ path: string }> {
 		return this.appendSystemPromptSourcePaths.map((path) => ({ path }));
+	}
+
+	getPackageManager(): PackageManager | undefined {
+		return this.packageManager;
 	}
 
 	extendResources(paths: ResourceExtensionPaths): void {
@@ -676,6 +697,7 @@ export class DefaultResourceLoader implements ResourceLoader {
 
 		this.lastPromptPaths = promptPaths;
 		this.updatePromptsFromPaths(promptPaths, metadataByPath);
+		this.updateOpenCodeCommands();
 		for (const p of this.additionalPromptTemplatePaths) {
 			if (isLocalPath(p)) {
 				const resolved = this.resolveResourcePath(p);
@@ -925,6 +947,25 @@ export class DefaultResourceLoader implements ResourceLoader {
 				this.getDefaultSourceInfoForPath(skill.filePath),
 		}));
 		this.skillDiagnostics = resolvedSkills.diagnostics;
+	}
+
+	private updateOpenCodeCommands(): void {
+		const extensionNames = this.extensionsResult.extensions.flatMap((extension) =>
+			[...extension.commands.values()].map((command) => `/${command.name.replace(/^\//, "")}`),
+		);
+		const loaded = loadOpenCodeCommands({
+			cwd: this.cwd,
+			agentDir: this.agentDir,
+			projectTrusted: this.settingsManager.isProjectTrusted(),
+			reservedNames: new Set([
+				...BUILTIN_SLASH_COMMANDS.map((command) => `/${command.name}`),
+				...extensionNames,
+				...this.prompts.map((prompt) => `/${prompt.name}`),
+			]),
+		});
+		const resolved = this.opencodeCommandsOverride ? this.opencodeCommandsOverride(loaded) : loaded;
+		this.commands = resolved.commands;
+		this.commandDiagnostics = resolved.diagnostics;
 	}
 
 	private updatePromptsFromPaths(promptPaths: string[], metadataByPath?: Map<string, PathMetadata>): void {

@@ -142,4 +142,41 @@ describe("AgentSession tool orchestration", () => {
 		const result = harness.session.messages.find((message) => message.role === "toolResult");
 		expect(result && "nestedCalls" in result).toBe(false);
 	});
+	it("forces one tool through hooks and persists a valid assistant/result pair", async () => {
+		const harness = await createHarness({
+			initialActiveToolNames: ["forced_echo"],
+			extensionFactories: [
+				(pi) => {
+					pi.registerTool({
+						name: "forced_echo",
+						label: "Forced echo",
+						description: "Echo forced input.",
+						parameters: Type.Object({ text: Type.String() }),
+						execute: async (_id, { text }) => ({ content: [{ type: "text", text }], details: { echoed: true } }),
+					});
+				},
+			],
+		});
+		harnesses.push(harness);
+		await harness.session.bindExtensions({});
+
+		const outcome = await harness.session.forceToolCall("forced_echo", { text: "run once" });
+
+		expect(outcome.isError).toBe(false);
+		expect(harness.eventsOfType("tool_execution_start").map((event) => event.toolName)).toEqual(["forced_echo"]);
+		expect(harness.session.messages.map((message) => message.role)).toEqual(["assistant", "toolResult"]);
+		const [assistant, result] = harness.session.messages;
+		if (assistant?.role !== "assistant" || result?.role !== "toolResult")
+			throw new Error("Missing forced call transcript pair");
+		expect(assistant.content).toEqual([outcome.toolCall]);
+		expect(result).toMatchObject({
+			toolCallId: outcome.toolCall.id,
+			details: { echoed: true, forcedBy: "xomp-force" },
+		});
+		const persisted = harness.sessionManager.getBranch().filter((entry) => entry.type === "message");
+		expect(persisted.map((entry) => entry.type === "message" && entry.message.role)).toEqual([
+			"assistant",
+			"toolResult",
+		]);
+	});
 });

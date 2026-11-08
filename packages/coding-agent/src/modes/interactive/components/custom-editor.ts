@@ -56,7 +56,7 @@ export class CustomEditor extends Editor {
 		const border = this.renderBaseTopBorder(width, hiddenLineCount);
 		if (!this.vimMode || width < 10) return border;
 		const label = this.vimNormalMode ? " NORMAL " : " INSERT ";
-		return truncateToWidth(border, Math.max(0, width - visibleWidth(label)), "") + "\x1b[0m" + label;
+		return `${truncateToWidth(border, Math.max(0, width - visibleWidth(label)), "")}\x1b[0m${label}`;
 	}
 
 	private renderBaseTopBorder(width: number, hiddenLineCount: number): string {

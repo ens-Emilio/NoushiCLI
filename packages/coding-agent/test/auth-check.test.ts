@@ -23,12 +23,14 @@ async function createRuntime(credentials: AuthStorage | ReadOnlyAuthStorage): Pr
 
 describe("auth check command", () => {
 	beforeEach(() => {
+		vi.stubEnv("OPENAI_API_KEY", undefined);
+		vi.stubEnv("MISSING_AUTH_CHECK_KEY", undefined);
 		if (existsSync(tempDir)) rmSync(tempDir, { recursive: true });
 		mkdirSync(tempDir, { recursive: true });
 	});
 
 	afterEach(() => {
-		if (existsSync(tempDir)) rmSync(tempDir, { recursive: true });
+		vi.unstubAllEnvs();
 	});
 
 	test("reports a configured provider as ready", async () => {

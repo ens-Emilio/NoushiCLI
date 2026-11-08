@@ -12,6 +12,7 @@ import {
 	Text,
 	type WheelScrollLines,
 } from "@earendil-works/pi-tui";
+import { DEFAULT_THEME } from "../../../config.ts";
 import { formatHttpIdleTimeoutMs, HTTP_IDLE_TIMEOUT_CHOICES } from "../../../core/http-dispatcher.ts";
 import { SETTINGS_DEFAULTS } from "../../../core/settings-defaults.ts";
 import {
@@ -250,7 +251,7 @@ function defaultAutomaticThemes(
 	if (autoTheme) return autoTheme;
 
 	const currentFixedTheme = currentThemeSetting.includes("/") ? undefined : currentThemeSetting;
-	const themeName = preferredTheme(availableThemes, currentFixedTheme, SYSTEM_THEME_NAME);
+	const themeName = preferredTheme(availableThemes, currentFixedTheme, DEFAULT_THEME);
 	return { lightTheme: themeName, darkTheme: themeName };
 }
 
@@ -288,7 +289,7 @@ class ThemeSubmenu extends Container {
 		this.singleTheme = preferredTheme(
 			availableThemes,
 			fixedTheme ?? (autoTheme ? this.getActiveAutomaticTheme() : undefined),
-			SYSTEM_THEME_NAME,
+			DEFAULT_THEME,
 		);
 
 		if (this.mode === "automatic") {

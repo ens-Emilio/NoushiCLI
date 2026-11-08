@@ -22,3 +22,11 @@ export {
 	isSecretReadCommand,
 } from "./policy.ts";
 export { isReviewSafeShellCommand, REVIEW_ALLOWED_TOOL_NAMES } from "./review.ts";
+export {
+	beginTurnCheckpoint,
+	lastUndoneTurn,
+	latestTurnCheckpoint,
+	sealTurnCheckpoint,
+	type TurnCheckpoint,
+	undoTurnCheckpoint,
+} from "./turn-checkpoints.ts";

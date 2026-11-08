@@ -13,7 +13,7 @@ import {
 	writeSync,
 } from "fs";
 import { tmpdir } from "os";
-import { join } from "path";
+import { dirname, join } from "path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { findMostRecentSession, loadEntriesFromFile, SessionManager } from "../../src/core/session-manager.ts";
 import { assistantMsg, readSessionFileRoles, userMsg } from "../utilities.ts";
@@ -395,7 +395,7 @@ describe("SessionManager.setSessionFile with corrupted files", () => {
 		writeFileSync(noHeaderFile, originalContent);
 
 		expect(() => SessionManager.open(noHeaderFile, tempDir)).toThrow(
-			`Session file is not a valid pi session: ${noHeaderFile}`,
+			`Session file is not a valid Noushi session: ${noHeaderFile}`,
 		);
 		expect(readFileSync(noHeaderFile, "utf-8")).toBe(originalContent);
 	});
@@ -406,7 +406,7 @@ describe("SessionManager.setSessionFile with corrupted files", () => {
 		writeFileSync(nonSessionFile, originalContent);
 
 		expect(() => SessionManager.open(nonSessionFile, tempDir)).toThrow(
-			`Session file is not a valid pi session: ${nonSessionFile}`,
+			`Session file is not a valid Noushi session: ${nonSessionFile}`,
 		);
 		expect(readFileSync(nonSessionFile, "utf-8")).toBe(originalContent);
 	});
@@ -509,5 +509,71 @@ describe("SessionManager session file creation", () => {
 
 		session.appendMessage(userMsg("second question"));
 		expect(readSessionFileRoles(session.getSessionFile()!)).toEqual(["session", "model_change", "user"]);
+	});
+});
+
+describe("SessionManager.moveTo and deleteSession", () => {
+	let tempDir: string;
+
+	beforeEach(() => {
+		tempDir = join(tmpdir(), `session-move-test-${Date.now()}`);
+		mkdirSync(tempDir, { recursive: true });
+	});
+
+	afterEach(() => {
+		rmSync(tempDir, { recursive: true, force: true });
+	});
+
+	function createPersistedSession(): SessionManager {
+		const sessionDir = join(tempDir, "sessions");
+		mkdirSync(sessionDir, { recursive: true });
+		const session = SessionManager.create(tempDir, sessionDir);
+		session.appendMessage(userMsg("before move"));
+		return session;
+	}
+
+	it("moves the session file and keeps appending to the new path", () => {
+		const session = createPersistedSession();
+		const original = session.getSessionFile()!;
+		const target = join(dirname(original), "renamed.jsonl");
+
+		const moved = session.moveTo(target);
+
+		expect(moved).toBe(target);
+		expect(existsSync(original)).toBe(false);
+		expect(existsSync(target)).toBe(true);
+		const followUpId = session.appendMessage(assistantMsg("after move"));
+		const reopened = SessionManager.open(target, tempDir);
+		expect(reopened.getBranch().at(-1)?.id).toBe(followUpId);
+	});
+
+	it("refuses moving onto an existing file or outside the session directory", () => {
+		const session = createPersistedSession();
+		const sessionDir = dirname(session.getSessionFile()!);
+		writeFileSync(join(sessionDir, "occupied.jsonl"), "x");
+		expect(() => session.moveTo(join(sessionDir, "occupied.jsonl"))).toThrow("already exists");
+		expect(() => session.moveTo(join(tempDir, "outside.jsonl"))).toThrow("session directory");
+	});
+
+	it("refuses to move an in-memory session", () => {
+		const session = SessionManager.inMemory(tempDir);
+		expect(() => session.moveTo(join(tempDir, "nope.jsonl"))).toThrow("not persisted");
+	});
+
+	it("deletes a stored session and refuses the active one or invalid files", () => {
+		const active = createPersistedSession();
+		const other = createPersistedSession();
+		const activeFile = active.getSessionFile()!;
+		const otherFile = other.getSessionFile()!;
+
+		expect(() => SessionManager.deleteSession(activeFile, activeFile)).toThrow("active session");
+		const junk = join(tempDir, "junk.jsonl");
+		writeFileSync(junk, "not a session");
+		expect(() => SessionManager.deleteSession(junk)).toThrow("Not a valid");
+		expect(() => SessionManager.deleteSession(join(tempDir, "missing.jsonl"))).toThrow("does not exist");
+
+		SessionManager.deleteSession(otherFile, activeFile);
+		expect(existsSync(otherFile)).toBe(false);
+		expect(existsSync(activeFile)).toBe(true);
 	});
 });

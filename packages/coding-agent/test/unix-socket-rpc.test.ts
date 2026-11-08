@@ -62,7 +62,7 @@ describe("Unix socket RPC transport", () => {
 		socket.once("connect", resolveConnected);
 		await connected;
 		socket.write('{"id":"one","type":"get_state"}\n{"type":"extension_ui_response","id":"ui","value":"é"}\n');
-		socket.end(undefined, undefined, () => {});
+		socket.end();
 		await ended;
 		expect(response).toBe(
 			'{"id":"one","type":"get_state"}\n{"type":"extension_ui_response","id":"ui","value":"é"}\n',

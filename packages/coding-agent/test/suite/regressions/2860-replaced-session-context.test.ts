@@ -124,6 +124,7 @@ describe("regression #2860: replaced session callbacks", () => {
 					reload: async () => {
 						await session.reload();
 					},
+					forceToolCall: async (toolName, args) => session.forceToolCall(toolName, args),
 				},
 			});
 		};

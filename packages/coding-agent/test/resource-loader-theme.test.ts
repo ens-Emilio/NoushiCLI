@@ -1,8 +1,20 @@
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { resetCapabilitiesCache, setCapabilityOverrides } from "@earendil-works/pi-tui";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const THEME_DARK = join(
+	dirname(fileURLToPath(import.meta.url)),
+	"..",
+	"src",
+	"modes",
+	"interactive",
+	"theme",
+	"dark.json",
+);
+
 import { DefaultResourceLoader } from "../src/core/resource-loader.ts";
 import { SettingsManager } from "../src/core/settings-manager.ts";
 import { setThemeJsonValidator } from "../src/modes/interactive/theme/theme.ts";
@@ -30,9 +42,7 @@ describe("DefaultResourceLoader theme color mode", () => {
 		mkdirSync(agentDir, { recursive: true });
 		mkdirSync(cwd, { recursive: true });
 
-		themeJson = JSON.parse(
-			readFileSync(join(process.cwd(), "src", "modes", "interactive", "theme", "dark.json"), "utf-8"),
-		) as TestThemeJson;
+		themeJson = JSON.parse(readFileSync(THEME_DARK, "utf-8")) as TestThemeJson;
 		themeJson.name = "capability-test";
 		themeJson.colors.userMessageBg = "#3c3544";
 		themePath = join(tempDir, "capability-test.json");

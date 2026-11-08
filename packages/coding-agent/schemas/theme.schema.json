@@ -343,8 +343,8 @@
       "additionalProperties": false
     }
   },
-  "title": "Pi Coding Agent Theme",
-  "description": "Theme schema for Pi coding agent",
+  "title": "Noushi Coding Agent Theme",
+  "description": "Theme schema for Noushi coding agent",
   "additionalProperties": false,
   "$defs": {
     "ColorValue": {

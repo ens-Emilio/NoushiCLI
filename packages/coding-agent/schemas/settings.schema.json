@@ -669,6 +669,18 @@
       ],
       "description": "HTTP header or body idle timeout in milliseconds; 0 or \"disabled\" disables it."
     },
+    "httpCaPath": {
+      "type": "string",
+      "description": "PEM CA certificate used by Pi-managed HTTPS clients."
+    },
+    "httpClientCertPath": {
+      "type": "string",
+      "description": "PEM client certificate used for enterprise mTLS."
+    },
+    "httpClientKeyPath": {
+      "type": "string",
+      "description": "PEM private key used for enterprise mTLS."
+    },
     "cacheWarming": {
       "anyOf": [
         {

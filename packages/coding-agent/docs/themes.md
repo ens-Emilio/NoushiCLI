@@ -1,10 +1,12 @@
-# Customize Pi with themes
+# Customize Noushi with themes
 
-Themes control the colors Pi uses in interactive mode and HTML exports. Pi includes the `system`, `dark`, and `light` themes. You can select one theme, follow your terminal's light or dark appearance, or create your own palette.
+Themes control the colors Noushi uses in interactive mode and HTML exports. Noushi includes the `noushi-green`, `system`, `dark`, and `light` themes. You can select one theme, follow your terminal's light or dark appearance, or create your own palette.
 
 ## Use your terminal's colors
 
-The `system` theme is the default. It builds Pi's colors from your terminal's theme, so Pi matches the terminal instead of bringing its own palette:
+The `noushi-green` theme is the default: a dark palette of graphite surfaces with the whole identity in greens, designed for the Noushi brand. Its full design rationale lives in [theme-noushi-green.md](theme-noushi-green.md), and `themes-preview.html` in this directory renders a faithful simulation of the TUI with it.
+
+The `system` theme builds Noushi's colors from your terminal's theme instead, so Noushi matches the terminal:
 
 - Pi queries the terminal's default foreground and background colors and its 16 ANSI colors.
 - Each Pi color takes its hue from one ANSI color, for example errors from red and links from blue.
@@ -35,7 +37,7 @@ The selection is saved as the `theme` [setting](settings.md#terminal-and-display
 }
 ```
 
-Without a `theme` setting, Pi uses `system`.
+Without a `theme` setting, Noushi uses its product default (`noushi-green`).
 
 Automatic mode stores the light theme first and the dark theme second:
 

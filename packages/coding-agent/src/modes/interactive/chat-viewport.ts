@@ -11,6 +11,8 @@ export interface ChatViewportOptions {
 	readonly scrollbarTrackStyle?: (text: string) => string;
 	readonly scrollbarThumbStyle?: (text: string) => string;
 	readonly sidePanel?: Component;
+	/** Whether the side panel should occupy its column on this render; consulted on every layout pass. */
+	readonly isSidePanelVisible?: () => boolean;
 }
 
 export interface ChatViewport {
@@ -40,10 +42,20 @@ export function createChatViewport(options: ChatViewportOptions): ChatViewport {
 		{ component: transcript, basis: 0, grow: 1, shrink: 1, minSize: 1 },
 		{ component: dock, basis: "auto", grow: 0, shrink: 1, minSize: 1 },
 	]);
+	// The filesystem panel opts in per render through `visible`; an always-mounted panel would
+	// reserve its column even when closed.
 	const root = options.sidePanel
 		? new HStack([
 				{ component: chat, basis: 0, grow: 1, shrink: 1, minSize: 20 },
-				{ component: options.sidePanel, basis: 30, grow: 0, shrink: 1, minSize: 10, maxSize: 42 },
+				{
+					component: options.sidePanel,
+					basis: 30,
+					grow: 0,
+					shrink: 1,
+					minSize: 10,
+					maxSize: 42,
+					visible: () => options.isSidePanelVisible?.() ?? false,
+				},
 			])
 		: chat;
 	return { transcript, root };

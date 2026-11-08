@@ -235,6 +235,10 @@
       "$ref": "#/$defs/KeybindingValue",
       "description": "Toggle tool output"
     },
+    "app.editor.searchHistory": {
+      "$ref": "#/$defs/KeybindingValue",
+      "description": "Search prompt history"
+    },
     "app.thinking.toggle": {
       "$ref": "#/$defs/KeybindingValue",
       "description": "Toggle thinking blocks"
@@ -262,6 +266,14 @@
     "app.clipboard.pasteImage": {
       "$ref": "#/$defs/KeybindingValue",
       "description": "Paste files on macOS, images, or text from clipboard"
+    },
+    "app.filesystem.toggle": {
+      "$ref": "#/$defs/KeybindingValue",
+      "description": "Toggle filesystem panel"
+    },
+    "app.editor.vimMode": {
+      "$ref": "#/$defs/KeybindingValue",
+      "description": "Toggle Vim editing mode"
     },
     "app.session.new": {
       "$ref": "#/$defs/KeybindingValue",

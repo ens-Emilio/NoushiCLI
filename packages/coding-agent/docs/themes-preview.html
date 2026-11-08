@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Noushi — noushi-green</title>
+<style>
+:root{
+  --pageBg:oklch(17% 0.012 160);
+  --cardBg:oklch(21% 0.012 160);
+  --text:oklch(92% 0.010 150);
+  --muted:oklch(67% 0.015 150);
+  --dim:oklch(54% 0.010 160);
+  --mint:oklch(75% 0.13 155);
+  --teal:oklch(68% 0.10 180);
+  --green:oklch(72% 0.14 160);
+  --olive:oklch(70% 0.09 110);
+  --amber:oklch(75% 0.12 95);
+  --red:oklch(65% 0.15 25);
+  --graphiteBg:oklch(26% 0.016 160);
+  --borderMuted:oklch(42% 0.010 160);
+  --border:oklch(50% 0.018 160);
+  --toolSuccessBg:oklch(30% 0.07 155);
+  --toolErrorBg:oklch(28% 0.08 25);
+  --mono:"SF Mono",ui-monospace,"Cascadia Code",Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--pageBg);color:var(--text);font-family:var(--mono);font-size:13.5px;line-height:1.55}
+.app{display:flex;flex-direction:column;height:100vh;padding:0 0 0 0}
+.pad{padding:0 18px}
+header{display:flex;align-items:baseline;gap:10px;padding:12px 18px;flex-wrap:wrap}
+.logo{color:var(--mint);font-weight:700;letter-spacing:.06em}
+.ver{color:var(--dim);font-size:12px}
+.hints{color:var(--muted);font-size:12px}
+.stream{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding:4px 18px 10px}
+.stream::-webkit-scrollbar{width:8px}
+.stream::-webkit-scrollbar-track{background:oklch(30% 0.01 160)}
+.stream::-webkit-scrollbar-thumb{background:oklch(62% 0.01 160);border-radius:4px}
+.lbl{font-size:11px;margin-bottom:2px}
+.user{background:var(--graphiteBg);padding:8px 12px;border-radius:4px}
+.user .lbl{color:var(--mint)}
+.assistant .lbl{color:var(--dim)}
+.assistant .msg{color:var(--muted)}
+.assistant .msg code{color:var(--mint)}
+.assistant .msg b{color:var(--text);font-weight:600}
+.tool{border:1px solid var(--borderMuted);border-radius:6px;overflow:hidden;margin-top:8px;max-width:720px}
+.tool .t{padding:6px 12px;font-size:12px}
+.tool .o{padding:8px 12px;color:var(--muted);font-size:12px;white-space:pre-wrap}
+.t-pend{background:oklch(21% 0.013 160)}
+.t-ok{background:var(--toolSuccessBg)}
+.t-err{background:var(--toolErrorBg)}
+.t-ok .t{color:var(--green)} .t-err .t{color:var(--red)}
+.diff{border:1px solid var(--borderMuted);border-radius:6px;font-size:12px;overflow:hidden;margin-top:8px;max-width:720px}
+.diff div{padding:1px 12px;white-space:pre-wrap}
+.d-add{background:var(--toolSuccessBg);color:var(--green)}
+.d-rem{background:var(--toolErrorBg);color:var(--red)}
+.d-ctx{color:var(--muted)}
+.inv{filter:invert(.85)}
+.code{border:1px solid var(--borderMuted);border-left:3px solid var(--muted);border-radius:4px;padding:10px 14px;font-size:12.5px;white-space:pre;overflow-x:auto;background:var(--cardBg);margin-top:8px;max-width:720px}
+.k{color:var(--teal)} .s{color:var(--olive)} .f{color:var(--amber)} .n{color:var(--green)} .ty{color:var(--mint)} .c{color:var(--muted);font-style:italic} .v{color:oklch(76% 0.08 145)} .p{color:var(--muted)}
+
+/* menu de seleção */
+.menu{border:1px solid var(--borderMuted);border-radius:6px;padding:6px 0;max-width:520px;margin-top:8px}
+.menu div{padding:3px 12px;color:var(--muted)}
+.menu .sel{color:var(--mint)}
+.menu .dsc{color:var(--dim)}
+
+/* editor */
+.editor-wrap{padding:10px 18px 6px}
+.editor{border:1.5px solid var(--borderMuted);border-radius:6px;padding:9px 12px;display:flex;align-items:baseline;gap:6px;cursor:text;transition:border-color .15s}
+.editor:focus-within{border-color:var(--border)}
+.editor.bash{border-color:var(--green)}
+.editor.think2{border-color:oklch(62% 0.10 155)}
+.editor.think3{border-color:var(--mint)}
+.editor.think5{border-color:var(--amber)}
+.prompt{color:var(--mint);user-select:none}
+.input{flex:1;background:none;border:none;outline:none;color:var(--text);font:inherit;caret-color:var(--mint)}
+.input::placeholder{color:var(--dim)}
+.mode{color:var(--green);font-size:11px;user-select:none;display:none}
+.editor.bash .mode{display:inline}
+.thinkbar{display:flex;gap:8px;align-items:center;padding:4px 2px 0}
+.thinkbar i{width:30px;height:6px;border-radius:2px;cursor:pointer;opacity:.75}
+.thinkbar i.on{outline:1px solid var(--text);opacity:1}
+.thinkbar .th{font-size:11px;color:var(--dim)}
+
+/* footer */
+footer{display:flex;gap:14px;padding:8px 18px 10px;font-size:12px;flex-wrap:wrap}
+footer .m{color:var(--mint)} footer .st{color:var(--green)} footer .b{color:var(--dim)}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <span class="logo">noushi</span><span class="ver">v0.9.2</span>
+    <span class="hints">? ajuda · ! bash · / comandos · Tab thinking · Ctrl+O menu</span>
+  </header>
+
+  <div class="stream" id="stream">
+    <div class="user"><div class="lbl">Você</div>refatora o tema pra tons de verde, estilo opencode</div>
+
+    <div class="assistant">
+      <div class="lbl">Noushi</div>
+      <div class="msg">Lendo o catálogo de tokens e o tema builtin antes de escrever o novo JSON…</div>
+      <div class="tool t-pend"><div class="t">● read · theme-tokens.ts</div><div class="o">…</div></div>
+    </div>
+  </div>
+
+  <div class="editor-wrap">
+    <div class="editor" id="editor" onclick="document.getElementById('input').focus()">
+      <span class="prompt">›</span>
+      <span class="mode">!</span>
+      <input class="input" id="input" placeholder="escreva sua mensagem… (Enter envia · ! alterna bash · Tab thinking)" autocomplete="off">
+    </div>
+    <div class="thinkbar" id="thinkbar">
+      <span class="th">thinking</span>
+    </div>
+  </div>
+
+  <footer>
+    <span class="m">noushi-green</span><span class="st">● pronto</span><span class="b">~/.od/projects</span><span class="b">claude-fable-5.1</span>
+  </footer>
+</div>
+
+<script>
+const stream = document.getElementById('stream');
+const input = document.getElementById('input');
+const editor = document.getElementById('editor');
+
+// escala de thinking (7 níveis, cores do tema)
+const THINK = ['oklch(45% 0.008 160)','oklch(52% 0.03 160)','oklch(58% 0.07 155)','oklch(62% 0.10 155)','oklch(66% 0.12 158)','oklch(72% 0.12 100)','oklch(70% 0.15 55)'];
+let thinkLevel = 0;
+const bar = document.getElementById('thinkbar');
+function renderThink(){
+  bar.querySelectorAll('i').forEach(i=>i.remove());
+  THINK.forEach((c,idx)=>{
+    const i=document.createElement('i');
+    i.style.background=c;
+    if(idx===thinkLevel) i.className='on';
+    i.title='nível '+(idx+1);
+    i.onclick=()=>{thinkLevel=idx;applyThink();};
+    bar.appendChild(i);
+  });
+  editor.className = 'editor' + (bash? ' bash':'');
+  editor.style.borderColor = bash ? '' : THINK[thinkLevel];
+}
+function applyThink(){renderThink();}
+
+// modo bash
+let bash=false;
+input.addEventListener('input',()=>{
+  if(input.value==='!' && !bash){bash=true;input.value='';}
+  else if(input.value==='' && bash && event && event.inputType==='deleteContentBackward'){bash=false;}
+  editor.className='editor'+(bash?' bash':'');
+  editor.style.borderColor = bash? '':THINK[thinkLevel];
+});
+
+// resposta fake encadeada
+const REPLIES = [
+  `Pronto. Criei o <code>noushi_green.json</code> com <b>vars em okhsl</b> — accent em <code>okhsl(152 60% 68%)</code>, fundo grafite e diffs/sucesso na família verde.`,
+  `Ajustei <code>thinkingMax</code> para laranja, mantendo o degrau final legível. O watcher recarregou a TUI sem restart.`,
+  `Tool call concluído — 12 tokens atualizados, validação do schema passou.`
+];
+let ri=0;
+function fakeTool(){
+  const d=document.createElement('div');d.className='assistant';
+  d.innerHTML=`<div class="lbl">Noushi</div>
+    <div class="tool t-ok"><div class="t">✓ edit · noushi_green.json</div><div class="o">12 tokens atualizados</div></div>
+    <div class="msg" style="margin-top:6px">${REPLIES[ri++ % REPLIES.length]}</div>`;
+  stream.appendChild(d);stream.scrollTop=stream.scrollHeight;
+}
+input.addEventListener('keydown',e=>{
+  if(e.key==='Enter' && input.value.trim()){
+    const txt=input.value.trim();
+    const u=document.createElement('div');u.className='user';
+    u.innerHTML=`<div class="lbl">Você${bash?' (bash)':''}</div>`;
+    u.appendChild(document.createTextNode(txt));
+    stream.appendChild(u);
+    input.value='';if(bash){bash=false;editor.className='editor';editor.style.borderColor=THINK[thinkLevel];}
+    stream.scrollTop=stream.scrollHeight;
+    const p=document.createElement('div');p.className='assistant';
+    p.innerHTML=`<div class="lbl">Noushi</div><div class="tool t-pend"><div class="t">● bash · aplicando…</div><div class="o">…</div></div>`;
+    stream.appendChild(p);stream.scrollTop=stream.scrollHeight;
+    setTimeout(()=>{p.remove();fakeTool();},1100);
+  } else if(e.key==='Tab'){e.preventDefault();thinkLevel=(thinkLevel+1)%7;applyThink();}
+});
+
+// seed inicial de conteúdo: diff + código + menu
+(function seed(){
+  const d=document.createElement('div');d.className='assistant';
+  d.innerHTML=`<div class="lbl">Noushi</div>
+  <div class="diff"><div class="d-ctx">   function applyTheme(t) {</div><div class="d-rem">-    <span class="inv">accent: violet,</span></div><div class="d-add">+    <span class="inv">accent: mint,</span></div><div class="d-ctx">     border: muted,</div></div>
+  <div class="code"><span class="c">// resolve token → escape ANSI</span>
+<span class="k">const</span> <span class="f">fg</span> <span class="p">=</span> <span class="p">(</span><span class="v">token</span><span class="p">:</span> <span class="ty">ThemeColor</span><span class="p">,</span> <span class="v">s</span><span class="p">:</span> <span class="ty">string</span><span class="p">)</span> <span class="k">=&gt;</span> <span class="v">theme</span><span class="p">.</span><span class="f">fg</span><span class="p">(</span><span class="v">token</span><span class="p">,</span> <span class="v">s</span><span class="p">);</span>
+<span class="k">const</span> <span class="v">LEVELS</span> <span class="p">=</span> <span class="n">7</span><span class="p">;</span></div>
+  <div class="menu"><div class="sel">→ Tema <span class="dsc">noushi-green</span></div><div>  Modelo <span class="dsc">claude-fable-5.1</span></div><div>  Thinking <span class="dsc">high</span></div></div>`;
+  stream.appendChild(d);
+  stream.scrollTop=stream.scrollHeight;
+})();
+
+renderThink();
+input.focus();
+</script>
+</body>
+</html>

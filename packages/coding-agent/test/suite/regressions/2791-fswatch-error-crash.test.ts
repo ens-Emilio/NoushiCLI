@@ -49,22 +49,29 @@ describe("issue #2791 fs.watch error event crashes process", () => {
 		writeFileSync(
 			scriptPath,
 			`
-import { setTheme, stopThemeWatcher } from "${themeModulePath}";
+import { createRequire, syncBuiltinESMExports } from "node:module";
+const fs = createRequire(import.meta.url)("node:fs");
+const themeModulePath = "${themeModulePath}";
 
-process.env.PI_CODING_AGENT_DIR = "${agentDir}";
+process.env.NOUSHI_CODING_AGENT_DIR = "${agentDir}";
 
+const originalWatch = fs.watch;
+let themeWatcher: fs.FSWatcher | undefined;
+fs.watch = ((...args: Parameters<typeof fs.watch>) => {
+	themeWatcher = originalWatch(...args);
+	return themeWatcher;
+}) as typeof fs.watch;
+syncBuiltinESMExports();
+			// Import after patching fs.watch so theme module calls through the capture wrapper.
+			const { setTheme, stopThemeWatcher } = await import(themeModulePath);
 setTheme("custom-test", true);
 
-// Find the FSWatcher among active handles
-const handles = (process as any)._getActiveHandles();
-const fsWatcher = handles.find((h: any) => h.constructor?.name === "FSWatcher");
-
-if (!fsWatcher) {
-	process.stderr.write("no FSWatcher found among active handles\\n");
+if (!themeWatcher) {
+	process.stderr.write("theme watcher was not created\\n");
 	process.exit(2);
 }
 
-const errorListenerCount = fsWatcher.listenerCount("error");
+const errorListenerCount = themeWatcher.listenerCount("error");
 if (errorListenerCount === 0) {
 	process.stderr.write("BUG: FSWatcher has no error handler (issue #2791)\\n");
 }
@@ -72,7 +79,7 @@ if (errorListenerCount === 0) {
 // Emitting 'error' on an EventEmitter with no error listener throws.
 // This simulates an async OS error (e.g. ReadDirectoryChangesW invalidation).
 try {
-	fsWatcher.emit("error", new Error("simulated OS watcher failure"));
+	themeWatcher.emit("error", new Error("simulated OS watcher failure"));
 } catch {
 	process.stderr.write("error event was unhandled and threw\\n");
 	process.exit(1);
@@ -90,7 +97,7 @@ process.exit(0);
 			_stdout = execFileSync(process.execPath, [scriptPath], {
 				timeout: 10000,
 				encoding: "utf-8",
-				env: { ...process.env, PI_CODING_AGENT_DIR: agentDir },
+				env: { ...process.env, NOUSHI_CODING_AGENT_DIR: agentDir },
 				stdio: ["pipe", "pipe", "pipe"],
 			});
 			exitCode = 0;

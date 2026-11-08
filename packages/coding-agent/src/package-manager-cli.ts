@@ -16,6 +16,7 @@ import { selectConfig } from "./cli/config-selector.ts";
 import { createProjectTrustContext } from "./cli/project-trust.ts";
 import {
 	APP_NAME,
+	CLI_COMMAND_NAME,
 	CONFIG_DIR_NAME,
 	detectInstallChange,
 	detectInstallMethod,
@@ -112,7 +113,7 @@ function verifyManagedRelease(releaseDir: string, expectedVersion: string): void
 		releaseDir,
 		"node_modules",
 		".bin",
-		process.platform === "win32" ? `${APP_NAME}.cmd` : APP_NAME,
+		process.platform === "win32" ? `${CLI_COMMAND_NAME}.cmd` : CLI_COMMAND_NAME,
 	);
 	const result = spawnProcessSync(binPath, ["--version"], {
 		encoding: "utf8",
@@ -771,11 +772,11 @@ async function runConfiguredSelfUpdate(argv: string[], plan: SelfUpdatePlan): Pr
 	);
 }
 
-/** Version printed by `pi --version` as resolved from PATH, the pi the user runs next. */
+/** Version printed by the CLI executable resolved from PATH. */
 function readVersionOnPath(): string | undefined {
-	// PI_PACKAGE_DIR points at this installation and would make the new pi report the old version.
+	// PI_PACKAGE_DIR points at this installation and would make the new CLI report the old version.
 	const { PI_PACKAGE_DIR: _, ...env } = process.env;
-	const result = spawnProcessSync(APP_NAME, ["--version"], {
+	const result = spawnProcessSync(CLI_COMMAND_NAME, ["--version"], {
 		encoding: "utf-8",
 		stdio: ["ignore", "pipe", "pipe"],
 		env,

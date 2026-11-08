@@ -3,7 +3,7 @@ import type { AddressInfo } from "node:net";
 import { Type } from "typebox";
 import { afterEach, describe, expect, it } from "vitest";
 import { stream as streamAnthropic } from "../src/api/anthropic-messages.ts";
-import { getModel, normalizeContext, streamSimple } from "../src/compat.ts";
+import { getModel, getModels, normalizeContext, streamSimple } from "../src/compat.ts";
 import { findEnvKeys, getEnvApiKey } from "../src/env-api-keys.ts";
 import { getSupportedThinkingLevels } from "../src/models.ts";
 import type { Context, Model, Tool } from "../src/types.ts";
@@ -121,6 +121,7 @@ describe("Fireworks models", () => {
 		["accounts/fireworks/models/deepseek-v4p1-flash", ["off", "low", "high", "max"]],
 		["accounts/fireworks/models/qwen3p8-max", ["off", "low", "medium", "xhigh"]],
 		["accounts/fireworks/models/qwen3p8-2p4t-a95b", ["off", "low", "medium", "xhigh"]],
+		["accounts/fireworks/models/minimax-m3p1-flash", ["low", "medium", "high", "xhigh", "max"]],
 	] as const)("sends native Messages effort levels for %s", async (modelId, levels) => {
 		const model = getModel("fireworks", modelId);
 		expect(model.api).toBe("anthropic-messages");
@@ -158,25 +159,14 @@ describe("Fireworks models", () => {
 	] as const)("exposes distinct native effort levels for %s", (modelId, levels) => {
 		expect(getSupportedThinkingLevels(getModel("fireworks", modelId))).toEqual(levels);
 	});
-
-	it("keeps toggle-only Messages models without a verified fallback on budget-based thinking", async () => {
-		const model = getModel("fireworks", "accounts/fireworks/models/nemotron-3-ultra-nvfp4");
-		expect(model.compat?.forceAdaptiveThinking).toBeUndefined();
-		let payload: Record<string, unknown> | undefined;
-		await streamSimple(
-			model,
-			{ messages: [{ role: "user", content: "test", timestamp: 0 }] },
-			{
-				apiKey: "test-fireworks-key",
-				reasoning: "high",
-				onPayload: (value) => {
-					payload = value as Record<string, unknown>;
-					throw new Error("payload captured");
-				},
-			},
-		).result();
-		expect(payload?.thinking).toEqual({ type: "enabled", budget_tokens: 16384, display: "summarized" });
-		expect(payload?.output_config).toBeUndefined();
+	it("keeps every current Messages model on adaptive thinking with a verified effort source", async () => {
+		// nemotron-3-ultra-nvfp4, the last toggle-only Messages model, left the models.dev
+		// snapshot: every remaining Fireworks Messages model now maps effort levels.
+		const models = getModels("fireworks").filter(
+			(model): model is Model<"anthropic-messages"> => model.api === "anthropic-messages",
+		);
+		expect(models.length).toBeGreaterThan(0);
+		for (const model of models) expect(model.compat?.forceAdaptiveThinking).toBe(true);
 	});
 
 	it("resolves FIREWORKS_API_KEY from the environment", () => {
@@ -187,7 +177,7 @@ describe("Fireworks models", () => {
 	});
 
 	it("sets Fireworks-specific compat for session affinity and unsupported tool fields", () => {
-		const model = getModel("fireworks", "accounts/fireworks/models/nemotron-3-ultra-nvfp4");
+		const model = getModel("fireworks", "accounts/fireworks/models/deepseek-v4p1-flash");
 
 		expect(model.compat).toBeDefined();
 		expect(model.compat?.sendSessionAffinityHeaders).toBe(true);

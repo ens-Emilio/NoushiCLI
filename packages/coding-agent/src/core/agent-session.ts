@@ -13,6 +13,7 @@
  * Modes use this class and add their own I/O layer on top.
  */
 
+import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { basename, dirname } from "node:path";
 import {
@@ -62,6 +63,7 @@ import { processImage } from "../utils/image-process.ts";
 import { sleep } from "../utils/sleep.ts";
 import { normalizeToolResultImages } from "../utils/tool-result-images.ts";
 import { formatNoApiKeyFoundMessage, formatNoModelSelectedMessage } from "./auth-guidance.ts";
+import type { BackgroundJobRegistry } from "./background-jobs.ts";
 import { type BashResult, executeBashWithOperations } from "./bash-executor.ts";
 import { generateBugReportSummary } from "./bug-report.ts";
 import type { CacheWarmer, CacheWarmingStatus } from "./cache-warmer.ts";
@@ -120,8 +122,9 @@ import { type ModelFallbackPolicy, selectFallbackModel } from "./model-fallback.
 import { ModelRegistry } from "./model-registry.ts";
 import type { ModelRuntime } from "./model-runtime.ts";
 import { NestedToolCallRunner } from "./nested-tool-calls.ts";
-import { expandPromptTemplate, type PromptTemplate } from "./prompt-templates.ts";
+import { expandOpenCodeCommandInvocation, expandPromptTemplate, type PromptTemplate } from "./prompt-templates.ts";
 import type { ResourceExtensionPaths, ResourceLoader } from "./resource-loader.ts";
+import { beginTurnCheckpoint, sealTurnCheckpoint } from "./security/index.ts";
 import { exportSessionToJsonl } from "./session-export.ts";
 import {
 	type BranchSummaryEntry,
@@ -138,6 +141,7 @@ import {
 	DEFAULT_TOOL_NAMES,
 	type SettingsManager,
 } from "./settings-manager.ts";
+import { resolveSlashCommandCompatibility } from "./slash-command-compat.ts";
 import type { SlashCommandInfo } from "./slash-commands.ts";
 import { BUILTIN_PATH_PREFIX, createSyntheticSourceInfo, isSyntheticPath, type SourceInfo } from "./source-info.ts";
 import {
@@ -484,6 +488,7 @@ export class AgentSession {
 
 	private _modelRuntime: ModelRuntime;
 	private _cacheWarmer?: Pick<CacheWarmer, "cancel" | "status" | "onAgentSettled" | "onModeChanged" | "onWarmed">;
+	private _backgroundJobs?: BackgroundJobRegistry;
 
 	// Tool registry for extension getTools/setTools
 	private _toolRegistry: Map<string, AgentTool> = new Map();
@@ -498,7 +503,8 @@ export class AgentSession {
 	private _baseSystemPromptOptions!: NormalizedBuildSystemPromptOptions;
 	/** Prompt options after before_agent_start mutations for the active run. */
 	private _runSystemPromptOptions?: NormalizedBuildSystemPromptOptions;
-	private readonly _maxCostUsd?: number;
+	private _maxCostUsd?: number;
+	private readonly _configuredMaxCostUsd?: number;
 	private readonly _fallbackPolicy?: ModelFallbackPolicy;
 
 	constructor(config: AgentSessionConfig) {
@@ -510,6 +516,7 @@ export class AgentSession {
 		this._customTools = config.customTools ?? [];
 		this._cwd = config.cwd;
 		this._modelRuntime = config.modelRuntime;
+		this._configuredMaxCostUsd = config.maxCostUsd;
 		this._maxCostUsd = config.maxCostUsd;
 		this._fallbackPolicy = config.fallbackPolicy;
 		this._cacheWarmer = config.cacheWarmer;
@@ -763,12 +770,13 @@ export class AgentSession {
 		name: string,
 		args: unknown,
 		options: ExecuteToolOptions,
+		assistantMessageOverride?: AssistantMessage,
 	): Promise<AgentToolCallOutcome> {
 		this._nestedToolCalls ??= new NestedToolCallRunner({
 			getTools: () => this._getCallableTools(),
 			isSequential: () => this.agent.toolExecution === "sequential",
 			runToolCall: (toolCall, parentId, signal, onUpdate) => {
-				const assistantMessage = this._findLastAssistantMessage();
+				const assistantMessage = assistantMessageOverride ?? this._findLastAssistantMessage();
 				if (!assistantMessage) {
 					return Promise.resolve({
 						toolCall,
@@ -1347,6 +1355,7 @@ export class AgentSession {
 		} else if (event.type === "agent_end") {
 			await this._extensionRunner.emit({ type: "agent_end", messages: event.messages });
 		} else if (event.type === "turn_start") {
+			beginTurnCheckpoint(this._cwd);
 			const extensionEvent: TurnStartEvent = {
 				type: "turn_start",
 				turnIndex: this._turnIndex,
@@ -1354,6 +1363,7 @@ export class AgentSession {
 			};
 			await this._extensionRunner.emit(extensionEvent);
 		} else if (event.type === "turn_end") {
+			sealTurnCheckpoint(this._cwd);
 			if (event.message.role === "assistant" && !this._boundaryDispatchedMessages.delete(event.message)) {
 				await this._dispatchTurnEndBoundary(event.message, event.toolResults);
 			}
@@ -1469,6 +1479,7 @@ export class AgentSession {
 			this._cacheWarmer.onWarmed = undefined;
 			this._cacheWarmer.cancel();
 		}
+		void this._backgroundJobs?.dispose();
 		cleanupSessionResources(this.sessionId);
 	}
 
@@ -1523,6 +1534,16 @@ export class AgentSession {
 	/** Whether the session has no active agent run, compaction, branch summary, retry, or queued continuation. */
 	get isIdle(): boolean {
 		return !this._isAgentRunActive && !this.isCompacting;
+	}
+
+	/** Set an extension-owned per-session cost cap without weakening the configured CLI cap. */
+	private setExtensionCostLimit(limit: number | undefined): void {
+		this._maxCostUsd =
+			this._configuredMaxCostUsd === undefined
+				? limit
+				: limit === undefined
+					? this._configuredMaxCostUsd
+					: Math.min(this._configuredMaxCostUsd, limit);
 	}
 
 	/** Current effective system prompt, including changes not yet sent to the model. */
@@ -1615,6 +1636,14 @@ export class AgentSession {
 		return this._toolDefinitions.get(name)?.definition.exposure ?? "direct";
 	}
 
+	setBackgroundJobRegistry(registry: BackgroundJobRegistry | undefined): void {
+		this._backgroundJobs = registry;
+	}
+
+	getBackgroundJobRegistry(): BackgroundJobRegistry | undefined {
+		return this._backgroundJobs;
+	}
+
 	/**
 	 * Tools callable through `ctx.executeTool()`: the active `direct` tools and every registered
 	 * `codemode` or `deferred` tool.
@@ -1696,6 +1725,69 @@ export class AgentSession {
 	/** All messages including custom types like BashExecutionMessage */
 	get messages(): AgentMessage[] {
 		return this.agent.state.messages;
+	}
+
+	/**
+	 * Run one tool call outside a model turn, as if the model had issued it. The call goes
+	 * through the same pipeline as model-issued calls (schema validation, tool_call hooks,
+	 * execution, tool_result hooks), and the result is appended to the transcript as a normal
+	 * tool-result message with `details.forcedBy = "xomp-force"`. Refuses while an agent run
+	 * is active: forcing a call mid-turn would interleave it with model-issued results.
+	 * Never rejects for tool failures; unknown tools and validation errors come back as
+	 * `isError: true` outcomes.
+	 */
+	async forceToolCall(toolName: string, args: unknown): Promise<AgentToolCallOutcome> {
+		if (this.isStreaming) throw new Error("Cannot force a tool call while the agent is running.");
+		const previousAssistant = this._findLastAssistantMessage();
+		const model = this.model;
+		if (!previousAssistant && !model) throw new Error("Cannot run a forced tool call without a selected model.");
+		const assistantMessage: AssistantMessage = previousAssistant
+			? { ...previousAssistant, content: [], stopReason: "toolUse", timestamp: Date.now() }
+			: {
+					role: "assistant",
+					content: [],
+					api: model!.api,
+					provider: model!.provider,
+					model: model!.id,
+					usage: {
+						input: 0,
+						output: 0,
+						cacheRead: 0,
+						cacheWrite: 0,
+						totalTokens: 0,
+						cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+					},
+					stopReason: "toolUse",
+					timestamp: Date.now(),
+				};
+		const outcome = await this._executeNestedToolCall(`forced/${randomUUID()}`, toolName, args, {}, assistantMessage);
+		const toolCall = outcome.toolCall;
+		assistantMessage.content = [toolCall];
+		this.agent.state.messages.push(assistantMessage);
+		this.sessionManager.appendMessage(assistantMessage);
+		this._emit({ type: "message_start", message: assistantMessage });
+		this._emit({ type: "message_end", message: assistantMessage });
+		const message: ToolResultMessage = {
+			role: "toolResult",
+			toolCallId: toolCall.id,
+			toolName: toolCall.name,
+			content: outcome.result.content ?? [],
+			details: {
+				...(typeof outcome.result.details === "object" && outcome.result.details !== null
+					? outcome.result.details
+					: {}),
+				forcedBy: "xomp-force",
+			},
+			isError: outcome.isError,
+			timestamp: Date.now(),
+		};
+		this.agent.state.messages.push(message);
+		this.sessionManager.appendMessage(message);
+		this._refreshFinalizedContext();
+		this._emit({ type: "message_start", message });
+		this._emit({ type: "message_end", message });
+		this._emit({ type: "entry_appended", entry: this.sessionManager.getEntries().at(-1)! });
+		return outcome;
 	}
 
 	/** Current steering mode */
@@ -2180,6 +2272,12 @@ export class AgentSession {
 		let expandedText = currentText;
 		if (expandPromptTemplates) {
 			expandedText = this._expandSkillCommand(expandedText);
+			expandedText = expandOpenCodeCommandInvocation(
+				expandedText,
+				this._resourceLoader.getCommands?.().commands ?? [],
+				this._cwd,
+			);
+			expandedText = this._expandPromptCompatibilityAlias(expandedText);
 			expandedText = expandPromptTemplate(expandedText, [...this.promptTemplates]);
 		}
 
@@ -2303,6 +2401,12 @@ export class AgentSession {
 		if (!processedInput) return "handled";
 
 		let expandedText = this._expandSkillCommand(processedInput.text);
+		expandedText = expandOpenCodeCommandInvocation(
+			expandedText,
+			this._resourceLoader.getCommands?.().commands ?? [],
+			this._cwd,
+		);
+		expandedText = this._expandPromptCompatibilityAlias(expandedText);
 		expandedText = expandPromptTemplate(expandedText, [...this.promptTemplates]);
 
 		if (behavior === "steer") {
@@ -2313,6 +2417,17 @@ export class AgentSession {
 		return "queued";
 	}
 
+	/** Rewrite a namespaced alias only when its target is a loaded prompt template. */
+	private _expandPromptCompatibilityAlias(text: string): string {
+		const compatibility = resolveSlashCommandCompatibility(text);
+		if (
+			compatibility?.kind !== "alias" ||
+			!this.promptTemplates.some((template) => template.name === compatibility.command)
+		) {
+			return text;
+		}
+		return `/${compatibility.command}${compatibility.argumentsText ? ` ${compatibility.argumentsText}` : ""}`;
+	}
 	/**
 	 * Queue a steering message while the agent is running.
 	 * Delivered after the current assistant turn finishes executing its tool calls,
@@ -3450,9 +3565,19 @@ export class AgentSession {
 
 	private _applyExtensionBindings(runner: ExtensionRunner): void {
 		runner.setUIContext(this._extensionUIContext, this._extensionMode);
-		runner.bindCommandContext(this._extensionCommandContextActions);
-
 		this._extensionErrorUnsubscriber?.();
+		const actions = this._extensionCommandContextActions;
+		runner.bindCommandContext({
+			waitForIdle: actions?.waitForIdle ?? (async () => {}),
+			newSession: actions?.newSession ?? (async () => ({ cancelled: false })),
+			fork: actions?.fork ?? (async () => ({ cancelled: false })),
+			navigateTree: actions?.navigateTree ?? (async () => ({ cancelled: false })),
+			switchSession: actions?.switchSession ?? (async () => ({ cancelled: false })),
+			reload: actions?.reload ?? (async () => {}),
+			forceToolCall: (toolName, args) => this.forceToolCall(toolName, args),
+			getBackgroundJobs: () => this._backgroundJobs,
+			getPackageManager: () => this._resourceLoader.getPackageManager?.(),
+		});
 		this._extensionErrorUnsubscriber = this._extensionErrorListener
 			? runner.onError(this._extensionErrorListener)
 			: undefined;
@@ -3487,6 +3612,13 @@ export class AgentSession {
 				source: "prompt",
 				sourceInfo: template.sourceInfo,
 			}));
+			const opencodeCommands: SlashCommandInfo[] =
+				this._resourceLoader.getCommands?.().commands.map((command) => ({
+					name: command.name,
+					description: command.description,
+					source: "prompt",
+					sourceInfo: command.sourceInfo,
+				})) ?? [];
 
 			const skills: SlashCommandInfo[] = this._resourceLoader.getSkills().skills.map((skill) => ({
 				name: `skill:${skill.name}`,
@@ -3495,7 +3627,7 @@ export class AgentSession {
 				sourceInfo: skill.sourceInfo,
 			}));
 
-			return [...extensionCommands, ...templates, ...skills];
+			return [...extensionCommands, ...templates, ...opencodeCommands, ...skills];
 		};
 
 		runner.bindCore(
@@ -3534,10 +3666,18 @@ export class AgentSession {
 				setLabel: (entryId, label) => {
 					this.sessionManager.appendLabelChange(entryId, label);
 				},
+				appendContextEdit: (targetId, replacement) => {
+					const entryId = this.sessionManager.appendContextEdit(targetId, replacement);
+					this._refreshFinalizedContext();
+					const entry = this.sessionManager.getEntry(entryId);
+					if (entry) this._emit({ type: "entry_appended", entry });
+					return entryId;
+				},
 				getActiveTools: () => this.getActiveToolNames(),
 				getAllTools: () => this.getAllTools(),
 				getSettings: () => this.settingsManager.getSettings(),
 				setActiveTools: (toolNames) => this.setActiveToolsByName(toolNames),
+				setSessionCostLimit: (limit) => this.setExtensionCostLimit(limit),
 				refreshTools: () => this._refreshToolRegistry(),
 				getCommands,
 				setModel: async (model) => {
@@ -3561,7 +3701,22 @@ export class AgentSession {
 					}
 					void this.abort();
 				},
+				getQueue: () => ({
+					steering: this.getSteeringMessages(),
+					followUp: this.getFollowUpMessages(),
+				}),
 				hasPendingMessages: () => this.pendingMessageCount > 0,
+				lastActivityOutcome: () => this._lastActivityOutcome,
+				lastUserPrompt: () => {
+					const entries = this.sessionManager.getEntries();
+					for (let i = entries.length - 1; i >= 0; i--) {
+						const entry = entries[i];
+						if (entry.type !== "message" || entry.message.role !== "user") continue;
+						const text = contentText(entry.message.content, "");
+						return text || undefined;
+					}
+					return undefined;
+				},
 				shutdown: () => {
 					this._extensionShutdownHandler?.();
 				},

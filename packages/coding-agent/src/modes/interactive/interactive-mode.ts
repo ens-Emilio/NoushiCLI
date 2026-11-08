@@ -108,7 +108,7 @@ import { CredentialSynchronizationError } from "../../core/model-runtime.ts";
 import { DefaultPackageManager } from "../../core/package-manager.ts";
 import { RADIUS_MCP_URL, RADIUS_PROVIDER_ID } from "../../core/radius.ts";
 import type { ResourceDiagnostic } from "../../core/resource-loader.ts";
-import { getGitCheckpointPaths, rollbackGitCheckpoint } from "../../core/security/index.ts";
+import { lastUndoneTurn, latestTurnCheckpoint, undoTurnCheckpoint } from "../../core/security/index.ts";
 import { formatMissingSessionCwdPrompt, MissingSessionCwdError } from "../../core/session-cwd.ts";
 import { detectExternalSessionFormat, type ExternalSessionFormat } from "../../core/session-import-adapters.ts";
 import {
@@ -118,6 +118,7 @@ import {
 	type UsageEntry,
 } from "../../core/session-manager.ts";
 import type { FullscreenExitOutput, TuiMode } from "../../core/settings-manager.ts";
+import { resolveSlashCommandCompatibility } from "../../core/slash-command-compat.ts";
 import { BUILTIN_SLASH_COMMANDS } from "../../core/slash-commands.ts";
 import { getSourcePackageKey, type SourceInfo } from "../../core/source-info.ts";
 import { isInstallTelemetryEnabled } from "../../core/telemetry.ts";
@@ -752,7 +753,9 @@ export class InteractiveMode {
 		// Define commands for autocomplete
 		const slashCommands: SlashCommand[] = BUILTIN_SLASH_COMMANDS.map((command) => ({
 			name: command.name,
-			description: command.description,
+			description: command.origin
+				? `[${command.origin === "omp" ? "OMP" : "OpenCode"} compatibility] ${command.description}`
+				: command.description,
 			...(command.argumentHint && { argumentHint: command.argumentHint }),
 		}));
 
@@ -1012,6 +1015,7 @@ export class InteractiveMode {
 			widgetsBelow: this.widgetContainerBelow,
 			footer: this.footerContainer,
 			sidePanel: this.filesystemPanel,
+			isSidePanelVisible: () => this.filesystemPanelVisible,
 		});
 		this.transcriptScrollView = viewport.transcript;
 		this.fullscreenLayoutRoot = viewport.root;
@@ -2145,6 +2149,7 @@ export class InteractiveMode {
 				reload: async () => {
 					await this.handleReloadCommand();
 				},
+				forceToolCall: async (toolName, args) => this.session.forceToolCall(toolName, args),
 			},
 			shutdownHandler: () => {
 				this.shutdownRequested = true;
@@ -3304,6 +3309,15 @@ export class InteractiveMode {
 		this.defaultEditor.onSubmit = async (text: string) => {
 			text = text.trim();
 			if (!text) return;
+			const compatibility = resolveSlashCommandCompatibility(text);
+			if (compatibility?.kind === "toggle-thinking") {
+				this.toggleThinkingBlockVisibility();
+				this.editor.setText("");
+				return;
+			}
+			if (compatibility?.kind === "alias") {
+				text = `/${compatibility.command}${compatibility.argumentsText ? ` ${compatibility.argumentsText}` : ""}`;
+			}
 
 			// Handle commands
 			if (text === "/settings") {
@@ -3421,11 +3435,32 @@ export class InteractiveMode {
 				await this.handleReloadCommand();
 				return;
 			}
-			if (text === "/rollback") {
+			if (text === "/undo") {
 				this.editor.setText("");
 				const cwd = this.session.sessionManager.getCwd();
-				const result = rollbackGitCheckpoint(cwd, getGitCheckpointPaths(cwd));
+				const checkpoint = latestTurnCheckpoint(cwd);
+				if (!checkpoint) {
+					this.showStatus(
+						"No Noushi turn checkpoint is available to undo; no tracked file changed in recent turns.",
+					);
+					return;
+				}
+				const summary = checkpoint.paths.map((path) => `  ${path}`).join("\n");
+				if (!(await this.showExtensionConfirm("Undo the last turn's file changes?", summary))) return;
+				const result = undoTurnCheckpoint(cwd);
 				this.showStatus(result.message);
+				return;
+			}
+			if (text === "/redo") {
+				this.editor.setText("");
+				const undone = lastUndoneTurn(this.session.sessionManager.getCwd());
+				if (!undone) {
+					this.showStatus("Nothing to redo; no undone Noushi turn is available.");
+					return;
+				}
+				this.showStatus(
+					`Last undo restored: ${undone.paths.join(", ")}. Reapplying them is the next turn's job, not a stale snapshot replay.`,
+				);
 				return;
 			}
 			if (text === "/pin" || text.startsWith("/pin ")) {
@@ -6765,7 +6800,16 @@ export class InteractiveMode {
 			}
 			externalFormat = formatArgs[1];
 		}
-		externalFormat ??= detectExternalSessionFormat(inputPath);
+		try {
+			externalFormat ??= detectExternalSessionFormat(inputPath);
+		} catch (error: unknown) {
+			if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") {
+				this.showError(`Failed to import session: File not found: ${inputPath}`);
+				return;
+			}
+			this.showError(`Failed to import session: ${error instanceof Error ? error.message : String(error)}`);
+			return;
+		}
 
 		const confirmed = await this.showExtensionConfirm("Import session", `Replace current session with ${inputPath}?`);
 		if (!confirmed) {

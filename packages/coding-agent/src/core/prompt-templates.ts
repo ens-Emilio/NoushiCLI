@@ -1,5 +1,5 @@
-import { existsSync, readdirSync, readFileSync, statSync } from "fs";
-import { basename, dirname, join, resolve, sep } from "path";
+import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from "fs";
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "path";
 import { CONFIG_DIR_NAME } from "../config.ts";
 import { parseFrontmatter } from "../utils/frontmatter.ts";
 import { resolvePath } from "../utils/paths.ts";
@@ -15,7 +15,15 @@ export interface PromptTemplate {
 	argumentHint?: string;
 	content: string;
 	sourceInfo: SourceInfo;
-	filePath: string; // Absolute path to the template file
+	filePath: string;
+}
+
+export interface OpenCodeCommand extends PromptTemplate {
+	resourceType: "opencode-command";
+	agent?: string;
+	model?: string;
+	subtask?: boolean;
+	shellOptIn: boolean;
 }
 
 /**
@@ -200,6 +208,134 @@ function loadTemplatesFromDir(dir: string, getSourceInfo: (filePath: string) => 
 	}
 
 	return { templates, diagnostics };
+}
+
+export interface LoadOpenCodeCommandsOptions {
+	cwd: string;
+	agentDir: string;
+	projectTrusted: boolean;
+	reservedNames?: ReadonlySet<string>;
+}
+
+export interface LoadOpenCodeCommandsResult {
+	commands: OpenCodeCommand[];
+	diagnostics: ResourceDiagnostic[];
+}
+
+/** Discover OpenCode markdown commands without merging them into prompt templates. */
+export function loadOpenCodeCommands(options: LoadOpenCodeCommandsOptions): LoadOpenCodeCommandsResult {
+	const cwd = resolvePath(options.cwd);
+	const globalDir = join(resolvePath(options.agentDir), "commands");
+	const projectDir = resolve(cwd, CONFIG_DIR_NAME, "commands");
+	const commands: OpenCodeCommand[] = [];
+	const diagnostics: ResourceDiagnostic[] = [];
+	const reservedNames = options.reservedNames ?? new Set<string>();
+	const readDir = (dir: string, scope: "user" | "project"): void => {
+		if (!existsSync(dir)) return;
+		try {
+			for (const entry of readdirSync(dir, { withFileTypes: true })) {
+				if (!entry.name.endsWith(".md")) continue;
+				const filePath = join(dir, entry.name);
+				try {
+					if (!(entry.isFile() || (entry.isSymbolicLink() && statSync(filePath).isFile()))) continue;
+					const { frontmatter, body } = parseFrontmatter(readFileSync(filePath, "utf8"));
+					for (const key of ["description", "agent", "model"] as const) {
+						if (frontmatter[key] !== undefined && typeof frontmatter[key] !== "string") {
+							throw new Error(`frontmatter ${key} must be a string`);
+						}
+					}
+					if (frontmatter.subtask !== undefined && typeof frontmatter.subtask !== "boolean") {
+						throw new Error("frontmatter subtask must be a boolean");
+					}
+					if (frontmatter.shell !== undefined && typeof frontmatter.shell !== "boolean") {
+						throw new Error("frontmatter shell must be a boolean");
+					}
+					const stem = basename(entry.name, ".md");
+					const name = `xopencode-${stem}`;
+					if (reservedNames.has(`/${name}`) || commands.some((command) => command.name === name)) {
+						diagnostics.push({
+							type: "warning",
+							message: `OpenCode command collision ignored: /${name}`,
+							path: filePath,
+						});
+						continue;
+					}
+					const absolutePath = resolvePath(filePath);
+					commands.push({
+						name,
+						description: (frontmatter.description as string | undefined) ?? "",
+						content: body,
+						filePath: absolutePath,
+						sourceInfo: createSyntheticSourceInfo(absolutePath, {
+							source: "OpenCode compatibility",
+							scope,
+							baseDir: dir,
+						}),
+						resourceType: "opencode-command",
+						agent: frontmatter.agent as string | undefined,
+						model: frontmatter.model as string | undefined,
+						subtask: frontmatter.subtask as boolean | undefined,
+						shellOptIn: frontmatter.shell === true,
+					});
+				} catch (error) {
+					diagnostics.push({
+						type: "warning",
+						message: error instanceof Error ? error.message : "failed to load command",
+						path: filePath,
+					});
+				}
+			}
+		} catch (error) {
+			diagnostics.push({
+				type: "warning",
+				message: error instanceof Error ? error.message : "failed to read command directory",
+				path: dir,
+			});
+		}
+	};
+	readDir(globalDir, "user");
+	if (options.projectTrusted) readDir(projectDir, "project");
+	return { commands, diagnostics };
+}
+
+/** Expand command arguments and cwd-rooted file references. Shell interpolation is rejected without a callable safety path. */
+export function expandOpenCodeCommand(command: OpenCodeCommand, args: string[], cwd: string): string {
+	if (command.subtask) throw new Error(`/${command.name} declares subtask:true, but no subtask runtime is available`);
+	if (command.agent)
+		throw new Error(`/${command.name} declares agent:${command.agent}, but command agent selection is unavailable`);
+	if (command.model)
+		throw new Error(`/${command.name} declares model:${command.model}, but command model selection is unavailable`);
+	if (/!`[^`]*`/.test(command.content)) {
+		if (!command.shellOptIn)
+			throw new Error(`/${command.name} uses shell interpolation without frontmatter shell: true`);
+		if (command.sourceInfo.scope === "project")
+			throw new Error(
+				`/${command.name} shell interpolation requires a callable trusted-project bash confirmation path`,
+			);
+		throw new Error(
+			`/${command.name} shell interpolation is unavailable because no callable bash confirmation path exists`,
+		);
+	}
+	const withArgs = substituteArgs(command.content, args);
+	return withArgs.replace(/@([^\s"'`]+)/g, (reference, path: string) => {
+		if (path.startsWith("@")) return reference;
+		const root = realpathSync(resolve(cwd));
+		const target = resolve(root, path);
+		if (isAbsolute(path) || relative(root, target).startsWith(`..${sep}`) || relative(root, target) === "..") {
+			throw new Error(`/${command.name} file reference escapes the working directory: @${path}`);
+		}
+		const realTarget = realpathSync(target);
+		if (realTarget !== root && !realTarget.startsWith(`${root}${sep}`)) {
+			throw new Error(`/${command.name} file reference escapes the working directory: @${path}`);
+		}
+		return readFileSync(realTarget, "utf8");
+	});
+}
+export function expandOpenCodeCommandInvocation(text: string, commands: OpenCodeCommand[], cwd: string): string {
+	const match = text.match(/^\/([^\s]+)(?:\s+([\s\S]*))?$/);
+	if (!match) return text;
+	const command = commands.find((item) => item.name === match[1]);
+	return command ? expandOpenCodeCommand(command, parseCommandArgs(match[2] ?? ""), cwd) : text;
 }
 
 export interface LoadPromptTemplatesOptions {

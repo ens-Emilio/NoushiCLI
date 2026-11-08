@@ -18,6 +18,7 @@ import type { ExecOptions } from "../exec.ts";
 import { execCommand } from "../exec.ts";
 import { type McpServerConfig, McpServerRegistry, validateMcpServerConfig } from "../mcp-servers.ts";
 import { readPiManifest } from "../pi-manifest.ts";
+import type { ContextEditEntry } from "../session-manager.ts";
 import { createSyntheticSourceInfo, getSyntheticPathSource, isSyntheticPath } from "../source-info.ts";
 import { time } from "../timings.ts";
 import type { ModelRouteRequest, VirtualModelDefinition } from "../virtual-models.ts";
@@ -181,10 +182,12 @@ export function createExtensionRuntime(): ExtensionRuntime {
 		setSessionName: notInitialized,
 		getSessionName: notInitialized,
 		setLabel: notInitialized,
-		getActiveTools: notInitialized,
+		appendContextEdit: notInitialized,
 		getAllTools: notInitialized,
+		getActiveTools: notInitialized,
 		getSettings: notInitialized,
 		setActiveTools: notInitialized,
+		setSessionCostLimit: notInitialized,
 		// registerTool() is valid during extension load; refresh is only needed post-bind.
 		refreshTools: () => {},
 		getCommands: notInitialized,
@@ -421,6 +424,11 @@ function createExtensionAPI(
 			runtime.setLabel(entryId, label);
 		},
 
+		appendContextEdit(targetId: string, replacement: ContextEditEntry["replacement"]): string {
+			assertActive();
+			return runtime.appendContextEdit(targetId, replacement);
+		},
+
 		exec(command: string, args: string[], options?: ExecOptions) {
 			assertActive();
 			return execCommand(command, args, options?.cwd ?? cwd, options);
@@ -444,6 +452,11 @@ function createExtensionAPI(
 		setActiveTools(toolNames: string[]): void {
 			assertActive();
 			runtime.setActiveTools(toolNames);
+		},
+
+		setSessionCostLimit(limit: number | undefined): void {
+			assertActive();
+			runtime.setSessionCostLimit?.(limit);
 		},
 
 		getCommands() {

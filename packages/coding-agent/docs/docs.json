@@ -195,6 +195,18 @@
         {
           "title": "Message Types",
           "path": "message-types.md"
+        },
+        {
+          "title": "Collaboration Protocol Draft",
+          "path": "collab-protocol-draft.md"
+        },
+        {
+          "title": "Advisor Role Design",
+          "path": "advisor-role-design.md"
+        },
+        {
+          "title": "SSH Execution Contract",
+          "path": "ssh-execution-contract.md"
         }
       ]
     }

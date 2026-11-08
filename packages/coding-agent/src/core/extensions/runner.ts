@@ -2,7 +2,7 @@
  * Extension runner - executes extensions and manages their lifecycle.
  */
 
-import type { AgentMessage, AgentTool } from "@earendil-works/pi-agent-core";
+import type { AgentMessage, AgentTool, AgentToolCallOutcome } from "@earendil-works/pi-agent-core";
 import {
 	getCurrentSystemMessage,
 	type ImageContent,
@@ -12,11 +12,13 @@ import {
 } from "@earendil-works/pi-ai";
 import type { KeyId } from "@earendil-works/pi-tui";
 import { type Theme, theme } from "../../modes/interactive/theme/theme.ts";
+import type { BackgroundJobRegistry } from "../background-jobs.ts";
 import type { CacheWarmingAction } from "../cache-warmer.ts";
 import type { ResourceDiagnostic } from "../diagnostics.ts";
 import type { KeybindingsConfig } from "../keybindings.ts";
 import type { ModelRegistry } from "../model-registry.ts";
 import type { ScopedModel } from "../model-resolver.ts";
+import type { PackageManager } from "../package-manager.ts";
 import type { SessionManager } from "../session-manager.ts";
 import {
 	type BuildSystemPromptOptions,
@@ -26,6 +28,7 @@ import {
 } from "../system-prompt.ts";
 import type { VirtualModelDefinition } from "../virtual-models.ts";
 import type {
+	AgentActivityOutcome,
 	AgentBeforeSettleEvent,
 	BeforeAgentStartCustomEvent,
 	BeforeAgentStartEvent,
@@ -378,7 +381,13 @@ export class ExtensionRunner {
 	private getSignalFn: () => AbortSignal | undefined = () => undefined;
 	private waitForIdleFn: () => Promise<void> = async () => {};
 	private abortFn: () => void = () => {};
+	private getQueueFn: () => { steering: readonly string[]; followUp: readonly string[] } = () => ({
+		steering: [],
+		followUp: [],
+	});
+	private lastActivityOutcomeFn: () => AgentActivityOutcome = () => "completed";
 	private hasPendingMessagesFn: () => boolean = () => false;
+	private lastUserPromptFn: () => string | undefined = () => undefined;
 	private getContextUsageFn: () => ContextUsage | undefined = () => undefined;
 	private compactFn: (options?: CompactOptions) => void = () => {};
 	private getSystemPromptFn: () => string = () => "";
@@ -393,6 +402,13 @@ export class ExtensionRunner {
 	private navigateTreeHandler: NavigateTreeHandler = async () => ({ cancelled: false });
 	private switchSessionHandler: SwitchSessionHandler = async () => ({ cancelled: false });
 	private reloadHandler: ReloadHandler = async () => {};
+	private forceToolCallHandler: (toolName: string, args: unknown) => Promise<AgentToolCallOutcome> = async () => ({
+		toolCall: { type: "toolCall", id: "forced/none", name: "unknown", arguments: {} },
+		result: { content: [{ type: "text", text: "No session is bound to force tool calls." }], details: {} },
+		isError: true,
+	});
+	private getBackgroundJobsHandler: () => unknown = () => undefined;
+	private getPackageManagerHandler: () => unknown = () => undefined;
 	private shutdownHandler: ShutdownHandler = () => {};
 	private shortcutDiagnostics: ResourceDiagnostic[] = [];
 	private commandDiagnostics: ResourceDiagnostic[] = [];
@@ -433,9 +449,11 @@ export class ExtensionRunner {
 		this.runtime.setSessionName = actions.setSessionName;
 		this.runtime.getSessionName = actions.getSessionName;
 		this.runtime.setLabel = actions.setLabel;
+		this.runtime.appendContextEdit = actions.appendContextEdit;
 		this.runtime.getActiveTools = actions.getActiveTools;
 		this.runtime.getAllTools = actions.getAllTools;
 		this.runtime.getSettings = actions.getSettings;
+		if (actions.setSessionCostLimit) this.runtime.setSessionCostLimit = actions.setSessionCostLimit;
 		this.runtime.setActiveTools = actions.setActiveTools;
 		this.runtime.refreshTools = actions.refreshTools;
 		this.runtime.getCommands = actions.getCommands;
@@ -451,7 +469,10 @@ export class ExtensionRunner {
 		this.isProjectTrustedFn = contextActions.isProjectTrusted;
 		this.getSignalFn = contextActions.getSignal;
 		this.abortFn = contextActions.abort;
+		this.getQueueFn = contextActions.getQueue ?? (() => ({ steering: [], followUp: [] }));
 		this.hasPendingMessagesFn = contextActions.hasPendingMessages;
+		this.lastActivityOutcomeFn = contextActions.lastActivityOutcome ?? (() => "completed");
+		this.lastUserPromptFn = contextActions.lastUserPrompt ?? (() => undefined);
 		this.shutdownHandler = contextActions.shutdown;
 		this.getContextUsageFn = contextActions.getContextUsage;
 		this.compactFn = contextActions.compact;
@@ -559,6 +580,9 @@ export class ExtensionRunner {
 			this.navigateTreeHandler = actions.navigateTree;
 			this.switchSessionHandler = actions.switchSession;
 			this.reloadHandler = actions.reload;
+			this.forceToolCallHandler = actions.forceToolCall;
+			if (actions.getBackgroundJobs) this.getBackgroundJobsHandler = actions.getBackgroundJobs;
+			if (actions.getPackageManager) this.getPackageManagerHandler = actions.getPackageManager;
 			return;
 		}
 
@@ -568,6 +592,11 @@ export class ExtensionRunner {
 		this.navigateTreeHandler = async () => ({ cancelled: false });
 		this.switchSessionHandler = async () => ({ cancelled: false });
 		this.reloadHandler = async () => {};
+		this.forceToolCallHandler = async () => ({
+			toolCall: { type: "toolCall", id: "forced/none", name: "unknown", arguments: {} },
+			result: { content: [{ type: "text", text: "No session is bound to force tool calls." }], details: {} },
+			isError: true,
+		});
 	}
 
 	setUIContext(uiContext?: ExtensionUIContext, mode: ExtensionMode = "print"): void {
@@ -946,9 +975,21 @@ export class ExtensionRunner {
 				runner.assertActive();
 				runner.abortFn();
 			},
+			getQueue: () => {
+				runner.assertActive();
+				return runner.getQueueFn();
+			},
 			hasPendingMessages: () => {
 				runner.assertActive();
 				return runner.hasPendingMessagesFn();
+			},
+			lastActivityOutcome: () => {
+				runner.assertActive();
+				return runner.lastActivityOutcomeFn();
+			},
+			lastUserPrompt: () => {
+				runner.assertActive();
+				return runner.lastUserPromptFn();
 			},
 			shutdown: () => {
 				runner.assertActive();
@@ -1037,6 +1078,20 @@ export class ExtensionRunner {
 		context.reload = () => {
 			this.assertActive();
 			return this.reloadHandler();
+		};
+		context.forceToolCall = (toolName, args) => {
+			this.assertActive();
+			return this.forceToolCallHandler(toolName, args);
+		};
+		context.getBackgroundJobs = () => {
+			this.assertActive();
+			const jobs = this.getBackgroundJobsHandler();
+			return jobs as BackgroundJobRegistry | undefined;
+		};
+		context.getPackageManager = () => {
+			this.assertActive();
+			const manager = this.getPackageManagerHandler();
+			return manager as PackageManager | undefined;
 		};
 		return context;
 	}

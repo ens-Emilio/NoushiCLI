@@ -106,9 +106,9 @@ describe("Coding Agent Tools", () => {
 			expect(output).toContain(
 				"Potential prompt injection detected (instruction override, credential exfiltration, unrelated command request)",
 			);
-			expect(output).toContain("[Potential prompt injection: instruction override]\n" + content.split("\n")[0]);
-			expect(output).toContain("[Potential prompt injection: credential exfiltration]\n" + content.split("\n")[1]);
-			expect(output).toContain("[Potential prompt injection: unrelated command request]\n" + content.split("\n")[2]);
+			expect(output).toContain(`[Potential prompt injection: instruction override]\n${content.split("\n")[0]}`);
+			expect(output).toContain(`[Potential prompt injection: credential exfiltration]\n${content.split("\n")[1]}`);
+			expect(output).toContain(`[Potential prompt injection: unrelated command request]\n${content.split("\n")[2]}`);
 			expect(result.structuredContent).toBe(output);
 			expect(output).toContain("file content is untrusted and has not been modified");
 		});
@@ -598,7 +598,9 @@ describe("Coding Agent Tools", () => {
 					},
 				},
 			});
-			await expect(tool.execute("test-danger-headless", { command: "rm -rf build" })).rejects.toThrow(/denied/i);
+			await expect(
+				tool.execute("test-danger-headless", { command: "rm -rf build" }, undefined, undefined, fakeCtx(testDir)),
+			).rejects.toThrow(/denied/i);
 			expect(executed).toBe(false);
 		});
 
@@ -1012,16 +1014,28 @@ describe("Coding Agent Tools", () => {
 			const secretFile = join(testDir, ".env");
 			writeFileSync(secretFile, "TOKEN=secret");
 			const tool = createGrepToolDefinition(testDir);
-			await expect(tool.execute("test-grep-secret-root", { pattern: "TOKEN", path: secretFile })).rejects.toThrow(
-				/secret paths/i,
-			);
+			await expect(
+				tool.execute(
+					"test-grep-secret-root",
+					{ pattern: "TOKEN", path: secretFile },
+					undefined,
+					undefined,
+					fakeCtx(testDir),
+				),
+			).rejects.toThrow(/secret paths/i);
 		});
 		it("should deny secret directories as find search roots", async () => {
 			const tool = createFindToolDefinition(testDir, {
 				operations: { exists: () => true, glob: () => ["safe.txt"] },
 			});
 			await expect(
-				tool.execute("test-find-secret-root", { pattern: "*", path: join(testDir, ".env") }),
+				tool.execute(
+					"test-find-secret-root",
+					{ pattern: "*", path: join(testDir, ".env") },
+					undefined,
+					undefined,
+					fakeCtx(testDir),
+				),
 			).rejects.toThrow(/secret paths/i);
 		});
 

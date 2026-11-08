@@ -94,6 +94,7 @@ export function createWriteToolDefinition(
 				captureGitCheckpointPath(ctx?.cwd || cwd, trackedPath);
 				await ops.writeFile(absolutePath, content);
 				markGitCheckpointPathWritten(ctx?.cwd || cwd, trackedPath);
+				throwIfAborted();
 
 				return {
 					content: [{ type: "text", text: `Successfully wrote to ${path}` }],

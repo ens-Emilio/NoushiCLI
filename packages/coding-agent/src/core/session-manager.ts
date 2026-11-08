@@ -21,12 +21,14 @@ import {
 	openSync,
 	readdirSync,
 	readSync,
+	renameSync,
 	type Stats,
 	statSync,
+	unlinkSync,
 	writeFileSync,
 } from "fs";
 import { readdir, stat } from "fs/promises";
-import { basename, join, resolve } from "path";
+import { basename, dirname, join, resolve } from "path";
 import { createInterface } from "readline";
 import { StringDecoder } from "string_decoder";
 import { APP_NAME, getAgentDir as getDefaultAgentDir, getSessionsDir } from "../config.ts";
@@ -254,6 +256,7 @@ export type ReadonlySessionManager = Pick<
 	| "getSessionDir"
 	| "getSessionId"
 	| "getSessionFile"
+	| "moveTo"
 	| "getLeafId"
 	| "getLeafEntry"
 	| "getEntry"
@@ -1142,6 +1145,42 @@ export class SessionManager {
 
 	isPersisted(): boolean {
 		return this.persist;
+	}
+
+	/**
+	 * Move the current session file to `targetPath` via atomic rename and continue writing there.
+	 * Refuses an existing target, a target outside this session's directory, and non-persisted sessions.
+	 */
+	moveTo(targetPath: string): string {
+		if (!this.persist || !this.sessionFile) {
+			throw new Error("The current session is not persisted to a file, so it cannot be moved.");
+		}
+		const target = resolvePath(targetPath);
+		if (existsSync(target)) {
+			throw new Error(`Target session file already exists: ${target}`);
+		}
+		if (dirname(target) !== this.sessionDir) {
+			throw new Error(`Target must stay inside the session directory ${this.sessionDir}`);
+		}
+		renameSync(this.sessionFile, target);
+		this.sessionFile = target;
+		return target;
+	}
+
+	/** Delete a session file after verifying it parses as a Noushi session. Refuses the active session file. */
+	static deleteSession(sessionPath: string, activeSessionFile?: string): void {
+		const target = resolvePath(sessionPath);
+		if (activeSessionFile && pathsEqual(target, resolvePath(activeSessionFile))) {
+			throw new Error("Refusing to delete the active session. Start another session first.");
+		}
+		if (!existsSync(target)) {
+			throw new Error(`Session file does not exist: ${target}`);
+		}
+		const entries = loadEntriesFromFile(target);
+		if (entries.length === 0 || !entries.some((entry) => entry.type === "session")) {
+			throw new Error(`Not a valid ${APP_NAME} session file: ${target}`);
+		}
+		unlinkSync(target);
 	}
 
 	getCwd(): string {

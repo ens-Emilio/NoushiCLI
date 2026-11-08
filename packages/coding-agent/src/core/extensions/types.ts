@@ -58,6 +58,7 @@ import type {
 } from "@earendil-works/pi-tui";
 import type { Static, TSchema } from "typebox";
 import type { Theme } from "../../modes/interactive/theme/theme.ts";
+import type { BackgroundJobRegistry } from "../background-jobs.ts";
 import type { BashResult } from "../bash-executor.ts";
 import type { CacheWarmingDecisionEvent, CacheWarmingDecisionEventResult } from "../cache-warmer.ts";
 import type { CompactionPreparation, CompactionResult } from "../compaction/index.ts";
@@ -69,6 +70,7 @@ import type { McpServerConfig, McpServerRegistry, RegisteredMcpServer } from "..
 import type { CustomMessage } from "../messages.ts";
 import type { ModelRegistry } from "../model-registry.ts";
 import type { ScopedModel } from "../model-resolver.ts";
+import type { PackageManager } from "../package-manager.ts";
 import type {
 	BranchSummaryEntry,
 	CompactionEntry,
@@ -372,8 +374,14 @@ export interface ExtensionContext {
 	signal: AbortSignal | undefined;
 	/** Abort the current agent operation */
 	abort(): void;
-	/** Whether there are queued messages waiting */
+	/** Pending queued messages (steering and follow-up), read-only. */
+	getQueue?(): { steering: readonly string[]; followUp: readonly string[] };
+	/** Whether there are queued messages waiting. */
 	hasPendingMessages(): boolean;
+	/** Outcome of the most recent assistant turn, when the host exposes it. */
+	lastActivityOutcome?(): AgentActivityOutcome;
+	/** Text of the most recent user prompt, when the host exposes it. */
+	lastUserPrompt?(): string | undefined;
 	/** Gracefully shutdown pi and exit. Available in all contexts. */
 	shutdown(): void;
 	/** Get current context usage for the active model. */
@@ -452,6 +460,15 @@ export interface ExtensionCommandContext extends ExtensionContext {
 
 	/** Reload extensions, skills, prompts, themes, and context files. */
 	reload(): Promise<void>;
+
+	/** Run one tool call outside a model turn, as if the model had issued it. */
+	forceToolCall(toolName: string, args: unknown): Promise<AgentToolCallOutcome>;
+
+	/** Background job registry for /xomp-tan and /xomp-jobs, when available. */
+	getBackgroundJobs?(): BackgroundJobRegistry | undefined;
+
+	/** Package manager for /xomp-plugins and /xomp-marketplace, when available. */
+	getPackageManager?(): PackageManager | undefined;
 }
 
 /**
@@ -1807,6 +1824,8 @@ export interface ExtensionAPI {
 	/** Set or clear a label on an entry. Labels are user-defined markers for bookmarking/navigation. */
 	setLabel(entryId: string, label: string | undefined): void;
 
+	/** Append a branch-local context edit that replaces or omits an earlier model-visible entry. */
+	appendContextEdit(targetId: string, replacement: ContextEditEntry["replacement"]): string;
 	/** Execute a shell command. */
 	exec(command: string, args: string[], options?: ExecOptions): Promise<ExecResult>;
 
@@ -1824,6 +1843,8 @@ export interface ExtensionAPI {
 	 * `deferred` exposure stay callable from codemode scripts whether active or not.
 	 */
 	setActiveTools(toolNames: string[]): void;
+	/** Set an extension-owned per-session cost cap without weakening the configured CLI cap. */
+	setSessionCostLimit(limit: number | undefined): void;
 
 	/** Get available slash commands in the current session. */
 	getCommands(): SlashCommandInfo[];
@@ -2195,6 +2216,8 @@ export type SetThinkingLevelHandler = (level: ThinkingLevel) => void;
 
 export type SetLabelHandler = (entryId: string, label: string | undefined) => void;
 
+export type AppendContextEditHandler = (targetId: string, replacement: ContextEditEntry["replacement"]) => string;
+
 /**
  * Shared state created by loader, used during registration and runtime.
  * Contains flag values (defaults set during registration, CLI values set after).
@@ -2241,10 +2264,12 @@ export interface ExtensionActions {
 	setSessionName: SetSessionNameHandler;
 	getSessionName: GetSessionNameHandler;
 	setLabel: SetLabelHandler;
+	appendContextEdit: AppendContextEditHandler;
 	getActiveTools: GetActiveToolsHandler;
 	getAllTools: GetAllToolsHandler;
 	getSettings: GetSettingsHandler;
 	setActiveTools: SetActiveToolsHandler;
+	setSessionCostLimit?: (limit: number | undefined) => void;
 	refreshTools: RefreshToolsHandler;
 	getCommands: GetCommandsHandler;
 	setModel: SetModelHandler;
@@ -2263,7 +2288,10 @@ export interface ExtensionContextActions {
 	isProjectTrusted: () => boolean;
 	getSignal: () => AbortSignal | undefined;
 	abort: () => void;
+	getQueue?: () => { steering: readonly string[]; followUp: readonly string[] };
 	hasPendingMessages: () => boolean;
+	lastActivityOutcome?: () => AgentActivityOutcome;
+	lastUserPrompt?: () => string | undefined;
 	shutdown: () => void;
 	getContextUsage: () => ContextUsage | undefined;
 	compact: (options?: CompactOptions) => void;
@@ -2304,6 +2332,10 @@ export interface ExtensionCommandContextActions {
 		options?: { withSession?: (ctx: ReplacedSessionContext) => Promise<void> },
 	) => Promise<{ cancelled: boolean }>;
 	reload: () => Promise<void>;
+	/** Run one tool call outside a model turn, as `/xomp-force` does. */
+	forceToolCall: (toolName: string, args: unknown) => Promise<AgentToolCallOutcome>;
+	getBackgroundJobs?: () => BackgroundJobRegistry | undefined;
+	getPackageManager?: () => PackageManager | undefined;
 }
 
 /**

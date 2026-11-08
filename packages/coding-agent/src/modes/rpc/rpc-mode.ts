@@ -345,6 +345,7 @@ export async function runRpcMode(runtimeHost: AgentSessionRuntime): Promise<neve
 				reload: async () => {
 					await session.reload();
 				},
+				forceToolCall: async (toolName, args) => session.forceToolCall(toolName, args),
 			},
 			shutdownHandler: () => {
 				shutdownRequested = true;

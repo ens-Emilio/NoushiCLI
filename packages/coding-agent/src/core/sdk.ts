@@ -2,10 +2,12 @@ import { join } from "node:path";
 import { Agent, type AgentMessage, setDefaultStreamFn, type ThinkingLevel } from "@earendil-works/pi-agent-core";
 import type { ModelsSimpleStreamOptions } from "@earendil-works/pi-ai";
 import { clampThinkingLevel, type Message, type Model, streamSimple } from "@earendil-works/pi-ai/compat";
-import { getAgentDir } from "../config.ts";
+import { getAgentDir, getBundledPromptsDir } from "../config.ts";
+import { builtInExtensions } from "../extensions/index.ts";
 import { resolvePath } from "../utils/paths.ts";
 import { AgentSession, markRuntimeStreamFunction } from "./agent-session.ts";
 import { formatNoModelsAvailableMessage } from "./auth-guidance.ts";
+import { BackgroundJobRegistry } from "./background-jobs.ts";
 import { CacheWarmer } from "./cache-warmer.ts";
 import { getClientIdentity } from "./client-identity.ts";
 import { DEFAULT_THINKING_LEVEL } from "./defaults.ts";
@@ -228,7 +230,13 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 	const sessionManager = options.sessionManager ?? SessionManager.create(cwd, getDefaultSessionDir(cwd, agentDir));
 
 	if (!resourceLoader) {
-		resourceLoader = new DefaultResourceLoader({ cwd, agentDir, settingsManager });
+		resourceLoader = new DefaultResourceLoader({
+			cwd,
+			agentDir,
+			settingsManager,
+			additionalPromptTemplatePaths: [getBundledPromptsDir()],
+			extensionFactories: builtInExtensions,
+		});
 		await resourceLoader.reload();
 		time("resourceLoader.reload");
 	}
@@ -499,6 +507,21 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 		fallbackPolicy: options.fallbackPolicy,
 		sessionStartEvent: options.sessionStartEvent,
 	});
+	session.setBackgroundJobRegistry(
+		new BackgroundJobRegistry(async () => {
+			const child = await createAgentSession({
+				cwd,
+				agentDir,
+				model: session.model,
+				thinkingLevel: session.thinkingLevel,
+				sessionManager: SessionManager.inMemory(cwd),
+				settingsManager,
+				modelRuntime,
+				noTools: "all",
+			});
+			return child.session;
+		}),
+	);
 	const extensionsResult = resourceLoader.getExtensions();
 
 	return {

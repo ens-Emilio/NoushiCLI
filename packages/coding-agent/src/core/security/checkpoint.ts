@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { relative, resolve, sep } from "node:path";
+import { markTurnCheckpointWritten, recordTurnPath } from "./turn-checkpoints.ts";
 
 export interface CheckpointResult {
 	created: boolean;
@@ -30,6 +31,7 @@ function normalizeTrackedPath(cwd: string, path: string): string | undefined {
 /** Capture the pre-mutation tree before a built-in tool changes a tracked path. */
 export function captureGitCheckpointPath(cwd: string, path: string): CheckpointResult {
 	const normalized = normalizeTrackedPath(cwd, path);
+	recordTurnPath(cwd, normalized ?? path);
 	if (!normalized)
 		return { created: false, message: "Only tracked paths inside the working directory can be checkpointed." };
 	try {
@@ -54,6 +56,7 @@ export function captureGitCheckpointPath(cwd: string, path: string): CheckpointR
 /** Record the bytes written by Noushi so rollback can refuse intervening user edits. */
 export function markGitCheckpointPathWritten(cwd: string, path: string): void {
 	const normalized = normalizeTrackedPath(cwd, path);
+	markTurnCheckpointWritten(cwd, normalized ?? path);
 	const checkpoint = checkpoints.get(cwd);
 	if (!normalized || !checkpoint?.paths.has(normalized)) return;
 	try {

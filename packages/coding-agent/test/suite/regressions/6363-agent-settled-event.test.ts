@@ -123,6 +123,11 @@ describe("regression #6363: agent settled event and idle waiting", () => {
 				navigateTree: async () => ({ cancelled: false }),
 				switchSession: async () => ({ cancelled: false }),
 				reload: async () => {},
+				forceToolCall: async () => ({
+					toolCall: { type: "toolCall", id: "forced/1", name: "test", arguments: {} },
+					result: { content: [], details: {} },
+					isError: false,
+				}),
 			},
 		});
 		const toolStarted = new Promise<void>((resolve) => {

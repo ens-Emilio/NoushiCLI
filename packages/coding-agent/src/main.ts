@@ -39,8 +39,8 @@ import {
 	ENV_SESSION_DIR,
 	expandTildePath,
 	getAgentDir,
+	getBundledPromptsDir,
 	getPackageDir,
-	VERSION,
 } from "./config.ts";
 import { type CreateAgentSessionRuntimeFactory, createAgentSessionRuntime } from "./core/agent-session-runtime.ts";
 import {
@@ -829,7 +829,7 @@ export async function main(args: string[], options?: MainOptions) {
 			resourceLoaderOptions: {
 				additionalExtensionPaths: resolvedExtensionPaths,
 				additionalSkillPaths: resolvedSkillPaths,
-				additionalPromptTemplatePaths: resolvedPromptTemplatePaths,
+				additionalPromptTemplatePaths: [...(resolvedPromptTemplatePaths ?? []), getBundledPromptsDir()],
 				additionalThemePaths: resolvedThemePaths,
 				noExtensions: parsed.noExtensions,
 				disabledBuiltinExtensions: parsed.noMcp ? ["mcp"] : undefined,

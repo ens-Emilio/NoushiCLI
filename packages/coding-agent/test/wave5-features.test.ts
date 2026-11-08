@@ -35,7 +35,7 @@ function createMessage(role: "user" | "assistant", text: string) {
 describe("Wave5 implementation (IDs 19, 22, 23, 25, 26)", () => {
 	it("ID 19: pins context entries through compaction preparation", () => {
 		const session = SessionManager.inMemory();
-		const u1 = session.appendMessage(createMessage("user", "first question with some length"));
+		const _u1 = session.appendMessage(createMessage("user", "first question with some length"));
 		session.appendMessage(createMessage("assistant", "first answer with details"));
 		const u2 = session.appendMessage(createMessage("user", "second question with more length"));
 		session.appendMessage(createMessage("assistant", "second answer"));
@@ -70,7 +70,7 @@ describe("Wave5 implementation (IDs 19, 22, 23, 25, 26)", () => {
 
 			writeFileSync(
 				tempFile,
-				[
+				`${[
 					JSON.stringify({ type: "session", id: "s1", cwd: "/test" }),
 					JSON.stringify({
 						type: "message",
@@ -78,17 +78,17 @@ describe("Wave5 implementation (IDs 19, 22, 23, 25, 26)", () => {
 						parentId: "unknown-parent",
 						timestamp: new Date().toISOString(),
 					}),
-				].join("\n") + "\n",
+				].join("\n")}\n`,
 			);
 			expect(() => validateImportedSessionJsonl(tempFile)).toThrow(/Unknown parent ID/i);
 
 			writeFileSync(
 				tempFile,
-				[
+				`${[
 					JSON.stringify({ type: "session", id: "s1", cwd: "/test" }),
 					JSON.stringify({ type: "message", id: "m1", parentId: null, timestamp: new Date().toISOString() }),
 					JSON.stringify({ type: "message", id: "m2", parentId: "m1", timestamp: new Date().toISOString() }),
-				].join("\n") + "\n",
+				].join("\n")}\n`,
 			);
 			expect(() => validateImportedSessionJsonl(tempFile)).not.toThrow();
 		} finally {
@@ -104,7 +104,7 @@ describe("Wave5 implementation (IDs 19, 22, 23, 25, 26)", () => {
 		try {
 			writeFileSync(
 				claudePath,
-				[
+				`${[
 					JSON.stringify({
 						type: "user",
 						timestamp: "2026-01-01T00:00:00.000Z",
@@ -121,7 +121,7 @@ describe("Wave5 implementation (IDs 19, 22, 23, 25, 26)", () => {
 							],
 						},
 					}),
-				].join("\n") + "\n",
+				].join("\n")}\n`,
 			);
 			expect(detectExternalSessionFormat(claudePath)).toBe("claude-code");
 			const claude = convertExternalSessionToJsonl(claudePath, "claude-code", root);
@@ -137,7 +137,7 @@ describe("Wave5 implementation (IDs 19, 22, 23, 25, 26)", () => {
 			expect(aider).toContain("I will inspect it.");
 
 			const noushiPath = join(root, "native.jsonl");
-			writeFileSync(noushiPath, JSON.stringify({ type: "session", id: "native", cwd: root }) + "\n");
+			writeFileSync(noushiPath, `${JSON.stringify({ type: "session", id: "native", cwd: root })}\n`);
 			expect(detectExternalSessionFormat(noushiPath)).toBeUndefined();
 		} finally {
 			rmSync(root, { recursive: true, force: true });

@@ -581,10 +581,12 @@ export function detectInstallChange(packageJsonPath = startupPackageJsonPath): I
 interface PackageJson {
 	name?: string;
 	version?: string;
+	bin?: Record<string, string>;
 	piConfig?: {
 		name?: string;
 		configDir?: string;
 		version?: string;
+		defaultTheme?: string;
 	};
 }
 
@@ -602,11 +604,15 @@ try {
 
 const piConfigName: string | undefined = pkg.piConfig?.name;
 export const PACKAGE_NAME: string = pkg.name || "@earendil-works/pi-coding-agent";
+const cliCommandName = Object.keys(pkg.bin ?? {})[0];
+export const CLI_COMMAND_NAME = cliCommandName ?? "pi";
 export const APP_NAME: string = piConfigName || "pi";
 export const APP_TITLE: string = piConfigName ? APP_NAME : "π";
 export const CONFIG_DIR_NAME: string = pkg.piConfig?.configDir || ".pi";
 export const VERSION: string = pkg.version || "0.0.0";
 export const APP_VERSION: string = pkg.piConfig?.version || VERSION;
+/** Product default theme; falls back to the generated system theme when unset. */
+export const DEFAULT_THEME: string = pkg.piConfig?.defaultTheme || "system";
 
 // e.g., PI_CODING_AGENT_DIR or TAU_CODING_AGENT_DIR
 export const ENV_AGENT_DIR = `${APP_NAME.toUpperCase()}_CODING_AGENT_DIR`;
@@ -675,6 +681,11 @@ export function getPromptsDir(): string {
 /** Get path to sessions directory */
 export function getSessionsDir(): string {
 	return join(getAgentDir(), "sessions");
+}
+
+/** Get path to bundled prompt templates (source and installed package layouts). */
+export function getBundledPromptsDir(): string {
+	return join(getPackageDir(), "prompts");
 }
 
 /** Get path to debug log file */

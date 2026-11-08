@@ -16,14 +16,14 @@ describe("MCP tool schema validation", () => {
 			},
 			name: "mcp__docs__search",
 			exposure: "direct",
-			namespace: "mcp__docs",
+			namespace: { name: "mcp__docs" },
 			timeoutMs: 1000,
 			getClient: async () => ({ callTool }),
 		});
 
-		await expect(definition.execute("call", {}, new AbortController().signal)).rejects.toThrow(
-			'Validation failed for tool "mcp__docs__search"',
-		);
+		await expect(
+			definition.execute("call", {}, new AbortController().signal, undefined, { cwd: "/test" } as never),
+		).rejects.toThrow('Validation failed for tool "mcp__docs__search"');
 		expect(callTool).not.toHaveBeenCalled();
 	});
 
@@ -34,12 +34,13 @@ describe("MCP tool schema validation", () => {
 			tool: { name: "bad", inputSchema: { $ref: "#/$defs/missing" } },
 			name: "mcp__docs__bad",
 			exposure: "direct",
-			namespace: "mcp__docs",
+			namespace: { name: "mcp__docs" },
 			timeoutMs: 1000,
 			getClient,
 		});
-
-		await expect(definition.execute("call", {}, new AbortController().signal)).rejects.toThrow();
+		await expect(
+			definition.execute("call", {}, new AbortController().signal, undefined, { cwd: "/test" } as never),
+		).rejects.toThrow();
 		expect(getClient).not.toHaveBeenCalled();
 	});
 });

@@ -17,6 +17,7 @@ export interface FirstTimeSetupOptions {
 }
 
 const THEME_OPTIONS: Array<{ value: string; label: string }> = [
+	{ value: "noushi-green", label: "Noushi Green (default)" },
 	{ value: SYSTEM_THEME_NAME, label: "System (matches your terminal colors)" },
 	{ value: "dark", label: "Dark" },
 	{ value: "light", label: "Light" },
