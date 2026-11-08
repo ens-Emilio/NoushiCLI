@@ -2,9 +2,9 @@
 
 Noushi uses environment variables in three ways:
 
-- Variables such as `PI_OFFLINE` configure the Noushi process; upstream Pi-specific variable names remain for compatibility.
+- Variables such as `PI_OFFLINE` configure the Noushi process; upstream Noushi-specific variable names remain for compatibility.
 - Noushi sets process markers so child processes can identify Noushi as the launching agent.
-- Commands run by the LLM-callable shell tools receive `PI_*` variables describing the current session, retained for compatibility with Pi tooling.
+- Commands run by the LLM-callable shell tools receive `PI_*` variables describing the current session, retained for compatibility with Noushi tooling.
 
 Provider API-key variables are documented separately in [Providers](providers.md#use-an-api-key-from-the-environment).
 
@@ -13,13 +13,13 @@ Provider API-key variables are documented separately in [Providers](providers.md
 The CLI and RPC entry points set two process markers:
 
 - `AI_AGENT=noushi` is a generic marker that lets tooling identify Noushi as the agent that launched the process.
-- `PI_CODING_AGENT=true` is the upstream Pi compatibility marker and lets child processes detect the coding-agent process.
+- `PI_CODING_AGENT=true` is the upstream Noushi compatibility marker and lets child processes detect the coding-agent process.
 
 Child processes inherit both markers. They are not session-specific and are not set automatically when Noushi is embedded through the SDK.
 
 ## Shell Tool Session Environment
 
-Commands run by the `bash` and `powershell` tools receive the current Pi session state:
+Commands run by the `bash` and `powershell` tools receive the current Noushi session state:
 
 | Variable | Description |
 |----------|-------------|
@@ -29,7 +29,7 @@ Commands run by the `bash` and `powershell` tools receive the current Pi session
 | `PI_MODEL` | Currently selected model ID |
 | `PI_REASONING_LEVEL` | Current effective reasoning level: `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, or `max` |
 
-The values are resolved when each command starts. Switching models or changing the reasoning level therefore affects the next shell command without restarting Pi. `PI_PROVIDER` and `PI_MODEL` identify the selected Pi model, not a different upstream model that a router may choose internally.
+The values are resolved when each command starts. Switching models or changing the reasoning level therefore affects the next shell command without restarting Noushi. `PI_PROVIDER` and `PI_MODEL` identify the selected Noushi model, not a different upstream model that a router may choose internally.
 
 When asked which model or provider is running, inspect these variables instead of inferring the answer from the system prompt:
 
@@ -50,7 +50,7 @@ These variables are injected into the LLM-callable `bash` and `powershell` tools
 
 ### Custom Shell Tools
 
-Tools created with `createBashTool()` or `createPowerShellTool()` expose the session environment by default when registered with Pi. Injection happens before `spawnHook`, so a hook receives the variables in `ctx.env`:
+Tools created with `createBashTool()` or `createPowerShellTool()` expose the session environment by default when registered with Noushi. Injection happens before `spawnHook`, so a hook receives the variables in `ctx.env`:
 
 ```typescript
 const bashTool = createBashTool(cwd, {
@@ -70,20 +70,20 @@ const powershellTool = createPowerShellTool(cwd, {
 });
 ```
 
-When disabled, Pi removes inherited values for these variables so nested Pi processes do not expose stale parent-session metadata.
+When disabled, Noushi removes inherited values for these variables so nested Noushi processes do not expose stale parent-session metadata.
 
-## Pi Process Configuration
+## Noushi Process Configuration
 
-These variables are read by Pi itself:
+These variables are read by Noushi itself:
 
 | Variable | Description |
 |----------|-------------|
-| `PI_CODING_AGENT_DIR` | Override the config directory; default is `~/.pi/agent` |
+| `PI_CODING_AGENT_DIR` | Override the config directory; default is `~/.noushi/agent` |
 | `PI_CODING_AGENT_SESSION_DIR` | Override session storage; overridden by `--session-dir` |
 | `PI_PACKAGE_DIR` | Override the package directory, useful for Nix/Guix store paths |
 | `PI_OFFLINE` | Disable automatic network activity, including model catalog refreshes |
 | `PI_SKIP_VERSION_CHECK` | Disable the `pi.dev` latest-version request |
-| `PI_SELF_UPDATE_COMMAND` | Command `pi update` runs to update Pi itself, split on whitespace, with `{packageName}`, `{version}`, and `{installSpec}` placeholders. Takes precedence over the `selfUpdateCommand` setting. See [Custom update command](cli.md#custom-update-command) |
+| `PI_SELF_UPDATE_COMMAND` | Command `noushi update` runs to update Noushi itself, split on whitespace, with `{packageName}`, `{version}`, and `{installSpec}` placeholders. Takes precedence over the `selfUpdateCommand` setting. See [Custom update command](cli.md#custom-update-command) |
 | `PI_TELEMETRY` | Override install/update telemetry and provider attribution headers: `1`/`true`/`yes` or `0`/`false`/`no` |
 | `PI_CODEMODE_MAX_WORKERS` | Maximum codemode workers alive at once across all sessions in the process; default `2`. Each worker's script may use up to 256 MB. Raise it when one process runs several sessions, such as in-process subagents. Further scripts wait for a free worker. See [Codemode](codemode.md) |
 | `PI_CACHE_RETENTION` | Set to `long` for extended provider prompt caching where supported |
@@ -91,9 +91,9 @@ These variables are read by Pi itself:
 | `PI_RADIUS_GATEWAY` | Override the Radius gateway origin used by `/bug` uploads |
 | `PI_CLEAR_ON_SHRINK` | Set to `1` to clear empty rows when rendered content shrinks; the `terminal.clearOnShrink` setting takes precedence. See [Settings](settings.md) |
 | `PI_HARDWARE_CURSOR` | Set to `1` to show the hardware cursor; see [Terminal setup](terminal-setup.md) |
-| `PI_CLIPBOARD_OSC52` | Set to `1` to also send copied text to the terminal with OSC 52 after the local clipboard write, as Pi does over SSH. Use it when a remote client reaches Pi without SSH variables, such as a multiplexer attached from another machine or a remote IDE daemon |
+| `PI_CLIPBOARD_OSC52` | Set to `1` to also send copied text to the terminal with OSC 52 after the local clipboard write, as Noushi does over SSH. Use it when a remote client reaches Noushi without SSH variables, such as a multiplexer attached from another machine or a remote IDE daemon |
 | `PI_HYPERLINKS` | Override OSC 8 hyperlink detection with `1`, `0`, or `auto` |
-| `PI_PROGRAM_STATUS` | Override OSC 7501 program status detection: `1` always reports, `0` never reports; otherwise Pi reports only after the terminal confirms support. See [Terminal setup](terminal-setup.md#program-status) |
+| `PI_PROGRAM_STATUS` | Override OSC 7501 program status detection: `1` always reports, `0` never reports; otherwise Noushi reports only after the terminal confirms support. See [Terminal setup](terminal-setup.md#program-status) |
 | `PI_IMAGE_PROTOCOL` | Override inline image detection with `kitty`, `iterm2`, `none`, or `auto` |
 | `PI_TRUE_COLOR` | Override truecolor detection with `1`, `0`, or `auto` |
 | `PI_TUI_ESC_TIMEOUT` | How long to wait after a lone ESC before treating it as Escape, in milliseconds; defaults to `100` over SSH and `10` otherwise. Increase if Alt-key input is misread as Escape |
@@ -101,5 +101,5 @@ These variables are read by Pi itself:
 | `HTTP_PROXY`, `HTTPS_PROXY` | Proxy outbound HTTP requests |
 
 
-`httpCaPath`, `httpClientCertPath`, and `httpClientKeyPath` in global settings configure enterprise TLS for Pi-managed HTTPS clients. They are optional PEM file paths for a custom CA, client certificate, and private key. Missing files fail startup rather than falling back to unverified TLS.
+`httpCaPath`, `httpClientCertPath`, and `httpClientKeyPath` in global settings configure enterprise TLS for Noushi-managed HTTPS clients. They are optional PEM file paths for a custom CA, client certificate, and private key. Missing files fail startup rather than falling back to unverified TLS.
 Provider credentials such as `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, and provider-specific configuration are listed in [Providers](providers.md#use-an-api-key-from-the-environment).

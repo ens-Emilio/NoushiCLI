@@ -254,6 +254,24 @@ writeFileSync(join(bundleDir, "cli.js"), cliLauncher);
 chmodSync(join(bundleDir, "cli.js"), 0o755);
 chmodSync(join(bundleDir, "rpc-entry.js"), 0o755);
 
+// The bundle runs outside a checkout when copied or packed, and getPackageDir()
+// reads identity and version from package.json. Ship the fields it needs.
+const sourcePackage = JSON.parse(readFileSync(join(codingAgentDir, "package.json"), "utf8"));
+writeFileSync(
+	join(bundleDir, "package.json"),
+	`${JSON.stringify(
+		{
+			name: sourcePackage.name,
+			version: sourcePackage.piConfig?.version ?? sourcePackage.version,
+			type: "module",
+			bin: sourcePackage.bin,
+			piConfig: sourcePackage.piConfig,
+		},
+		null,
+		"\t",
+	)}\n`,
+);
+
 const files = new Set(metafiles.flatMap((metafile) => Object.keys(metafile.outputs))).size + 1;
 const mib = (outputBytes(metafiles) + cliLauncher.length) / (1024 * 1024);
 console.log(`Built ${relative(repoRoot, bundleDir)} (${files} files, ${mib.toFixed(1)} MiB)`);

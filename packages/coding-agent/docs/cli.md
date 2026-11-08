@@ -26,7 +26,7 @@ noushi --print "Summarize this repository"
 git diff | noushi --print "Review this change"
 noushi --mode json "Inspect this repository" > events.jsonl
 
-With terminal stdin and stdout, Pi opens the terminal UI unless `--print`, `--mode json`, or `--mode rpc` selects another interface. When either stream is redirected and neither JSON nor RPC mode is selected, Pi uses print mode. See [CLI Integration](cli-integration.md) for choosing between interactive, print, JSON, RPC, and SDK integration.
+With terminal stdin and stdout, Noushi opens the terminal UI unless `--print`, `--mode json`, or `--mode rpc` selects another interface. When either stream is redirected and neither JSON nor RPC mode is selected, Noushi uses print mode. See [CLI Integration](cli-integration.md) for choosing between interactive, print, JSON, RPC, and SDK integration.
 
 | Input | Behavior |
 |---|---|
@@ -35,9 +35,9 @@ With terminal stdin and stdout, Pi opens the terminal UI unless `--print`, `--mo
 | Piped stdin | Prepend its contents to the first prompt |
 | `--` | Stop option parsing so a prompt can begin with `-` |
 
-Pi resolves `@path` from the current working directory. The working directory also controls project configuration, resource discovery, and session grouping.
+Noushi resolves `@path` from the current working directory. The working directory also controls project configuration, resource discovery, and session grouping.
 
-`--print` controls whether Pi runs once and exits. `--mode` selects the output interface. `--mode text` does not force one-shot execution when stdin and stdout are terminals; use `--print` for that behavior.
+`--print` controls whether Noushi runs once and exits. `--mode` selects the output interface. `--mode text` does not force one-shot execution when stdin and stdout are terminals; use `--print` for that behavior.
 
 | Option | Behavior |
 |---|---|
@@ -54,7 +54,7 @@ RPC mode rejects `@file` arguments. JSON and RPC modes reserve stdout for protoc
 ## Models
 
 ```sh
-pi --model sonnet:high
+noushi --model sonnet:high
 ```
 
 See [Choose a Model](models.md) for model selection and [Providers](providers.md) for credentials.
@@ -62,7 +62,7 @@ See [Choose a Model](models.md) for model selection and [Providers](providers.md
 - `--provider <name>`<br>
   Restricts `--model` lookup to one provider. It requires `--model`.
 - `--model <pattern>`<br>
-  Selects by exact ID or fuzzy ID/name match. It accepts `provider/id` and an optional `:<thinking>` suffix. If several providers match, Pi prefers the one with credentials, otherwise it asks for `--provider`.
+  Selects by exact ID or fuzzy ID/name match. It accepts `provider/id` and an optional `:<thinking>` suffix. If several providers match, Noushi prefers the one with credentials, otherwise it asks for `--provider`.
 - `--api-key <key>`<br>
   Uses a non-persistent API-key override. It requires a model selected through `--model` or `--models`. It does not choose between providers that offer the same model.
 - `--thinking <level>`<br>
@@ -72,14 +72,14 @@ See [Choose a Model](models.md) for model selection and [Providers](providers.md
 - `--list-models [search]`<br>
   Lists available models, optionally filtered by a fuzzy search, then exits.
 - `--max-cost <usd>`<br>
-  Sets an optional cumulative model-cost ceiling in US dollars. It must be a positive finite number. When the session's recorded model cost reaches it, Pi blocks the next provider request and rejects further prompts. A request already underway completes, so its reported cost can exceed the ceiling. Omit it for no limit.
+  Sets an optional cumulative model-cost ceiling in US dollars. It must be a positive finite number. When the session's recorded model cost reaches it, Noushi blocks the next provider request and rejects further prompts. A request already underway completes, so its reported cost can exceed the ceiling. Omit it for no limit.
 
 <a id="session-options"></a>
 
 ## Sessions
 
 ```sh
-pi --continue
+noushi --continue
 ```
 
 See [Sessions and Context](sessions.md) for resuming, forking, naming, and storing sessions.
@@ -89,7 +89,7 @@ See [Sessions and Context](sessions.md) for resuming, forking, naming, and stori
 - `-r`, `--resume`<br>
   Opens the session selector and resumes the chosen session in its working directory. Press Tab to include sessions from other directories.
 - `--session <path|id>`<br>
-  Opens a session by file path or full/partial ID, and resumes it in its working directory. If the ID only matches sessions stored for another directory, Pi offers to fork it into the current directory instead.
+  Opens a session by file path or full/partial ID, and resumes it in its working directory. If the ID only matches sessions stored for another directory, Noushi offers to fork it into the current directory instead.
 - `--session-id <id>`<br>
   Opens the current directory's existing session with the ID, or creates it otherwise. IDs accept letters, numbers, `.`, `_`, and `-`.
 - `--fork <path|id>`<br>
@@ -101,7 +101,7 @@ See [Sessions and Context](sessions.md) for resuming, forking, naming, and stori
 - `-n`, `--name <name>`<br>
   Sets the session display name.
 - `--review`<br>
-  Runs a reduced-capability inspection session. Built-in mutation tools are removed and shell execution is restricted to the conservative read-only command allowlist documented in [Run Pi safely](security.md). This option is not an operating-system sandbox and does not constrain extensions.
+  Runs a reduced-capability inspection session. Built-in mutation tools are removed and shell execution is restricted to the conservative read-only command allowlist documented in [Run Noushi safely](security.md). This option is not an operating-system sandbox and does not constrain extensions.
 
 Constraints:
 
@@ -160,7 +160,7 @@ Built-in extensions add two more tools. They are off by default; the MCP extensi
 
 ### Enable codemode
 
-To turn on `codemode` for every session, add it to the default tools in `~/.pi/agent/settings.json` or a project's `.pi/settings.json`:
+To turn on `codemode` for every session, add it to the default tools in `~/.noushi/agent/settings.json` or a project's `.pi/settings.json`:
 
 ```json
 {
@@ -192,7 +192,7 @@ Scripts run in a QuickJS sandbox and reach the other tools through `tools.<name>
 pi --extension ./review.ts
 ```
 
-See [Configuration](configuration.md) for conventional directories and project trust, [Settings](settings.md#resources) for configured paths, and [Pi Packages](packages.md) for package sources.
+See [Configuration](configuration.md) for conventional directories and project trust, [Settings](settings.md#resources) for configured paths, and [Noushi Packages](packages.md) for package sources.
 
 - `-e`, `--extension <path>`<br>
   Loads an extension file or directory, or a built-in extension such as `builtin:mcp`, and is repeatable.
@@ -246,76 +246,76 @@ See [Configuration](configuration.md) for saved configuration, [Security](securi
 - `-h`, `--help`<br>
   Shows help, including flags registered by loaded extensions, then exits.
 - `-v`, `--version`<br>
-  Shows the Pi version, then exits.
+  Shows the Noushi version, then exits.
 
 Extensions may register additional long-form options. Unknown short options are rejected.
 
 ## Package commands
 
 ```sh
-pi install npm:@scope/package
+noushi install npm:@scope/package
 ```
 
-See [Pi Packages](packages.md) for source formats, filtering, installation, and project scope.
+See [Noushi Packages](packages.md) for source formats, filtering, installation, and project scope.
 
 ### Common tasks
 
 | Task | Command |
 |---|---|
-| Install a package | `pi install <source>` |
+| Install a package | `noushi install <source>` |
 | List configured packages | `pi list` |
 | Remove a package and its settings entry | `pi remove <source>` |
-| Configure which package resources load | `pi config` |
+| Configure which package resources load | `noushi config` |
 
 Add `--local` or `-l` to `install`, `remove`, `uninstall`, or `config` to use project settings instead of global settings.
 
-### Update Pi or packages
+### Update Noushi or packages
 
-Running `pi update` without a target updates Pi itself.
+Running `noushi update` without a target updates Noushi itself.
 
 | Task | Command |
 |---|---|
-| Update Pi | `pi update` |
-| Update all installed packages | `pi update --extensions` |
-| Update one installed package | `pi update <source>` |
-| Refresh model catalogs | `pi update --models` |
-| Update Pi and all installed packages | `pi update --all` |
+| Update Noushi | `noushi update` |
+| Update all installed packages | `noushi update --extensions` |
+| Update one installed package | `noushi update <source>` |
+| Refresh model catalogs | `noushi update --models` |
+| Update Noushi and all installed packages | `noushi update --all` |
 
-Add `--force` to reinstall Pi when the selected update includes Pi.
+Add `--force` to reinstall Noushi when the selected update includes Noushi.
 
-`pi update` cannot update Pi when another package manager provides it, such as Nix. Update Pi with that package manager, for example `nix profile upgrade pi`. Package and model catalog updates still work.
+`noushi update` cannot update Noushi when another package manager provides it, such as Nix. Update Noushi with that package manager, for example `nix profile upgrade pi`. Package and model catalog updates still work.
 
 #### Custom update command
 
-If a wrapper or another package manager provides Pi, set `PI_SELF_UPDATE_COMMAND` so `pi update` runs its update command:
+If a wrapper or another package manager provides Noushi, set `PI_SELF_UPDATE_COMMAND` so `noushi update` runs its update command:
 
 ```sh
 export PI_SELF_UPDATE_COMMAND="mise use -g npm:{packageName}@{version}"
 ```
 
-`pi update` runs it only when pi.dev has a newer release, replacing `{packageName}`, `{version}`, and `{installSpec}` (`{packageName}@{version}`) with that release. The value is split on spaces. For arguments with spaces, use the `selfUpdateCommand` setting in `~/.pi/agent/settings.json` instead, an argv array such as `["nix", "profile", "upgrade", "pi"]`.
+`noushi update` runs it only when npm has a newer release of `@noushi/cli`, replacing `{packageName}`, `{version}`, and `{installSpec}` (`{packageName}@{version}`) with that release. The value is split on spaces. For arguments with spaces, use the `selfUpdateCommand` setting in `~/.noushi/agent/settings.json` instead, an argv array such as `["nix", "profile", "upgrade", "noushi"]`.
 
 ### Aliases and command options
 
-- `pi uninstall <source>` is an alias for `pi remove <source>`.
-- `pi update --self`, `pi update self`, and `pi update pi` are aliases for `pi update`.
-- `pi update --extension <source>` is an alias for `pi update <source>`.
+- `noushi uninstall <source>` is an alias for `noushi remove <source>`.
+- `noushi update --self`, `noushi update self`, and `noushi update pi` are aliases for `noushi update`.
+- `noushi update --extension <source>` is an alias for `noushi update <source>`.
 - `-a`, `--approve` trusts project-local files for one command. `-na`, `--no-approve` ignores trust-gated project-local files.
 - Append `-h` or `--help` to a command for its exact usage and option constraints.
 
 ## Credential commands
 
 ```sh
-pi auth check --provider openai --json
+noushi auth check --provider openai --json
 ```
 
 Authentication commands require `--provider <provider>` or `--model <model>`. See [Providers](providers.md) for supported methods.
 
 | Command | Description |
 |---|---|
-| `pi auth check` | Print `ready`, `not_ready`, or `invalid`; exit with status `0`, `1`, or `2`, respectively |
-| `pi auth print-api-key` | Print the resolved API key |
-| `pi auth print-bearer-token` | Print a resolved OAuth bearer token |
+| `noushi auth check` | Print `ready`, `not_ready`, or `invalid`; exit with status `0`, `1`, or `2`, respectively |
+| `noushi auth print-api-key` | Print the resolved API key |
+| `noushi auth print-bearer-token` | Print a resolved OAuth bearer token |
 
 | Option | Applies to | Description |
 |---|---|---|
@@ -334,13 +334,13 @@ These commands work outside a session, so agents can run them through `bash`. Se
 
 | Command | Description |
 |---|---|
-| `pi mcp add <server> [options] -- <command> [args...]` | Add or replace a stdio server in `mcp.json`; `--env KEY=VALUE` (repeatable) and `--cwd <dir>` set its environment and working directory. Arguments after the command are passed to it |
-| `pi mcp add <server> [options] --url <url>` | Add or replace a streamable HTTP server; `--header KEY=VALUE` (repeatable), `--bearer-token-env-var <NAME>` (sends `Authorization: Bearer ${NAME}`), `--oauth-client-id`, `--oauth-client-secret`, `--oauth-callback-port`, `--oauth-client-name`, and `--oauth-client-registration` (`auto`, `cimd`, or `dcr`) configure authentication |
-| `pi mcp remove <server>` | Remove a server from `mcp.json`; stored OAuth credentials are kept |
-| `pi mcp list [--json]` | Connect to every enabled server and print its state, tools, and errors; exit with `1` when a config entry is invalid or an enabled server is not connected |
-| `pi mcp login <server> [-l] [--timeout <seconds>]` | Sign in to an OAuth server: open the authorization page and wait for the browser; a terminal also accepts the pasted redirect URL. `--timeout` limits the whole sign-in, including requests to the authorization server (default 300 seconds). `-l` requires the server to be defined in the project's `.pi/mcp.json` |
-| `pi mcp logout <server> [-l]` | Delete the stored OAuth credentials of a server |
+| `noushi mcp add <server> [options] -- <command> [args...]` | Add or replace a stdio server in `mcp.json`; `--env KEY=VALUE` (repeatable) and `--cwd <dir>` set its environment and working directory. Arguments after the command are passed to it |
+| `noushi mcp add <server> [options] --url <url>` | Add or replace a streamable HTTP server; `--header KEY=VALUE` (repeatable), `--bearer-token-env-var <NAME>` (sends `Authorization: Bearer ${NAME}`), `--oauth-client-id`, `--oauth-client-secret`, `--oauth-callback-port`, `--oauth-client-name`, and `--oauth-client-registration` (`auto`, `cimd`, or `dcr`) configure authentication |
+| `noushi mcp remove <server>` | Remove a server from `mcp.json`; stored OAuth credentials are kept |
+| `noushi mcp list [--json]` | Connect to every enabled server and print its state, tools, and errors; exit with `1` when a config entry is invalid or an enabled server is not connected |
+| `noushi mcp login <server> [-l] [--timeout <seconds>]` | Sign in to an OAuth server: open the authorization page and wait for the browser; a terminal also accepts the pasted redirect URL. `--timeout` limits the whole sign-in, including requests to the authorization server (default 300 seconds). `-l` requires the server to be defined in the project's `.pi/mcp.json` |
+| `noushi mcp logout <server> [-l]` | Delete the stored OAuth credentials of a server |
 
-`add` and `remove` change `~/.pi/agent/mcp.json`, or `.pi/mcp.json` in the current directory with `--local` (`-l`). `add` also takes `--exposure <mode>` (see [Exposure](mcp.md#control-tool-exposure)) and `--description <text>` and does not connect; run `pi mcp list` to check the server.
+`add` and `remove` change `~/.noushi/agent/mcp.json`, or `.pi/mcp.json` in the current directory with `--local` (`-l`). `add` also takes `--exposure <mode>` (see [Exposure](mcp.md#control-tool-exposure)) and `--description <text>` and does not connect; run `noushi mcp list` to check the server.
 
 Project `.pi/mcp.json` files are only read for projects that are already trusted.

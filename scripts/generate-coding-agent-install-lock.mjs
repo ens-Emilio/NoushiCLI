@@ -12,8 +12,8 @@ const rootLockfilePath = join(repoRoot, "package-lock.json");
 const outputPackageJsonPath = join(outputDir, "package.json");
 const outputLockfilePath = join(outputDir, "package-lock.json");
 const internalPackagePrefix = "@earendil-works/pi-";
-const internalPackageNames = new Set(["@earendil-works/chord"]);
-const installPackageName = "@earendil-works/pi-coding-agent-install";
+const internalPackageNames = new Set(["@earendil-works/chord", "@noushi/cli"]);
+const installPackageName = "@noushi/cli-install";
 const allowedInstallScriptPackages = new Map([
 	["@google/genai@2.21.0", "preinstall is a no-op in the published package"],
 	["protobufjs@7.6.6", "postinstall only warns about protobufjs version scheme mismatches"],
@@ -311,7 +311,7 @@ function validateGeneratedFiles(installerPackageJson, installLock, internalNames
 		}
 		if (
 			packageName !== undefined &&
-			(packageName.startsWith(internalPackagePrefix) || internalPackageNames.has(packageName)) &&
+			packageName === installerPackageJson.name &&
 			entry.version !== installerPackageJson.version
 		) {
 			errors.push(`${lockPath} internal package version ${entry.version} does not match ${installerPackageJson.version}`);

@@ -61,7 +61,7 @@ export interface ResourceLoaderReloadOptions {
 const HOST_PROVIDED_EXTENSION_PACKAGES = new Set([
 	"@earendil-works/pi-agent-core",
 	"@earendil-works/pi-ai",
-	"@earendil-works/pi-coding-agent",
+	"@noushi/cli",
 	"@earendil-works/pi-tui",
 	"@mariozechner/pi-agent-core",
 	"@mariozechner/pi-ai",

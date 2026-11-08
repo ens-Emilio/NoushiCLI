@@ -1,12 +1,12 @@
 # Keybindings Reference
 
-Pi exposes named actions, such as `app.session.new`, that can be assigned keybindings. You can change default assignments or bind unassigned actions in Pi's [user configuration](configuration.md#agent-directory).
+Noushi exposes named actions, such as `app.session.new`, that can be assigned keybindings. You can change default assignments or bind unassigned actions in Noushi's [user configuration](configuration.md#agent-directory).
 
 Run `/hotkeys` to see the active shortcuts for the main editor and application.
 
 ## Assign keybindings
 
-Create `<agent-dir>/keybindings.json`. The agent directory defaults to `~/.pi/agent` and is described in [Agent directory](configuration.md#agent-directory).
+Create `<agent-dir>/keybindings.json`. The agent directory defaults to `~/.noushi/agent` and is described in [Agent directory](configuration.md#agent-directory).
 
 Map each action identifier to one key or a list of keys:
 
@@ -132,7 +132,7 @@ In fullscreen mode, these actions control the transcript and take precedence ove
 | `app.filesystem.toggle` | `ctrl+shift+e` | Open or close the fullscreen filesystem panel |
 | `app.editor.vimMode` | None | Toggle Vim editing mode; Escape enters normal mode, `h/j/k/l`, `0`, `$`, and `x` work there; `i` and `a` return to insert mode |
 
-On native Windows, `app.suspend` has no default because Windows terminals do not support Unix job control. If you assign it manually, Pi shows a status message instead of suspending. WSL uses the normal `ctrl+z` and `fg` behavior.
+On native Windows, `app.suspend` has no default because Windows terminals do not support Unix job control. If you assign it manually, Noushi shows a status message instead of suspending. WSL uses the normal `ctrl+z` and `fg` behavior.
 The filesystem panel is available in fullscreen TUI mode. Use the configured `app.filesystem.toggle` key to open it, arrow keys to select, Enter to open a directory, Left to move to its parent, and Escape or the toggle key to close it. Its side-by-side layout resizes with the terminal width.
 
 ### Sessions

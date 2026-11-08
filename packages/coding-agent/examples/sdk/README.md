@@ -40,7 +40,7 @@ import {
   ModelRuntime,
   SessionManager,
   SettingsManager,
-} from "@earendil-works/pi-coding-agent";
+} from "@noushi/cli";
 
 const modelRuntime = await ModelRuntime.create();
 

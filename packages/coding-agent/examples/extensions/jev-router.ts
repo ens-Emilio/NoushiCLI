@@ -20,7 +20,7 @@
  */
 
 import type { Message } from "@earendil-works/pi-ai";
-import type { ExtensionAPI, ExtensionContext, ModelRoute, ModelRouteRequest } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI, ExtensionContext, ModelRoute, ModelRouteRequest } from "@noushi/cli";
 
 const PROVIDER = "openai-codex";
 const SOL = "gpt-5.6-sol";

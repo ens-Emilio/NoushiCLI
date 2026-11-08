@@ -49,7 +49,7 @@
 - `pi.exec()` accepts a `maxBuffer` option that limits stdout and stderr combined, and its result has a `truncated` field that is true when output exceeded the limit ([#11360](https://github.com/earendil-works/pi/issues/11360))
 - Device-code login (for example GitHub Copilot) now opens the verification page and copies the code when you press Enter. Providers can turn either action off with `openBrowserOnConfirm: false` or `copyCodeOnConfirm: false` ([#9282](https://github.com/earendil-works/pi/issues/9282), [#9301](https://github.com/earendil-works/pi/pull/9301))
 - `pi update` can update Pi through a wrapper or another package manager. Set `PI_SELF_UPDATE_COMMAND` (for example `mise use -g npm:{packageName}@{version}`) or the global `selfUpdateCommand` setting; `pi update` runs it when pi.dev reports a newer release and fills `{packageName}`, `{version}`, and `{installSpec}` from that release. See [Custom update command](docs/cli.md#custom-update-command) ([#7756](https://github.com/earendil-works/pi/issues/7756), [#5607](https://github.com/earendil-works/pi/issues/5607))
-- Extensions can format the user's configured keybindings with `keyText()` and `keyHint()` from the tool render context and the message and entry renderer options. Importing these functions from `@earendil-works/pi-coding-agent` can resolve the extension's own copy of the package, which does not see pi's keybindings, so hints such as `keyHint("app.tools.expand", "to expand")` rendered without the key. The docs now recommend the injected functions ([#4748](https://github.com/earendil-works/pi/issues/4748))
+- Extensions can format the user's configured keybindings with `keyText()` and `keyHint()` from the tool render context and the message and entry renderer options. Importing these functions from `@noushi/cli` can resolve the extension's own copy of the package, which does not see pi's keybindings, so hints such as `keyHint("app.tools.expand", "to expand")` rendered without the key. The docs now recommend the injected functions ([#4748](https://github.com/earendil-works/pi/issues/4748))
 - Added persisted session-entry `messageId` and ISO `timestamp` to `MarkdownTransformContext`. They are available when rendering saved entries and undefined for live rendering ([#7952](https://github.com/earendil-works/pi/pull/7952) by [@vipentti](https://github.com/vipentti))
 - Added a `blocked` option to inline `ctx.ui.custom()` components so approval prompts and other custom dialogs can report that pi is waiting for user input. Overlays ignore the option. See [Custom screens and overlays](docs/tui.md#use-custom-screens-and-overlays) ([#11428](https://github.com/earendil-works/pi/issues/11428))
 - Added `Usage.cost.totalFromProvider` to distinguish billed totals from catalog estimates in SDK and extension usage data; combined usage is marked provider-reported only when every part is ([#11178](https://github.com/earendil-works/pi/pull/11178))
@@ -865,7 +865,7 @@
 - Fixed managed `fd` and ripgrep downloads on Linux musl systems ([#9070](https://github.com/earendil-works/pi/pull/9070) by [@Charlie0113-T](https://github.com/Charlie0113-T)).
 - Removed the unavailable inherited Grok Build 0.1 model from `/model` ([#9093](https://github.com/earendil-works/pi/pull/9093) by [@Jaaneek](https://github.com/Jaaneek)).
 - Fixed inherited provider streams emitting incompatible event sequences and custom tool-call deltas.
-- Restored the `@earendil-works/pi-coding-agent/client` compatibility entry point.
+- Restored the `@noushi/cli/client` compatibility entry point.
 - Fixed the inherited Qwen Token Plan Individual catalog to include Qwen3.8 Flash ([#9021](https://github.com/earendil-works/pi/issues/9021)).
 - Fixed inherited OpenAI Codex SSE parsing to process terminal events that are not followed by a blank line ([#9047](https://github.com/earendil-works/pi/issues/9047)).
 - Fixed inherited GitHub Copilot Claude Fable 5 requests so selected reasoning levels are sent ([#8961](https://github.com/earendil-works/pi/issues/8961)).
@@ -1194,7 +1194,7 @@
 ### Added
 
 - Added built-in Baseten provider support with `BASETEN_API_KEY` authentication and `zai-org/GLM-5.2` as the default model.
-- Added experimental remote-session client APIs: the transport-neutral `PiClient`, CBOR protocol, Unix-socket transport, and `@earendil-works/pi-coding-agent/client` `RemoteSession` controller with transcript reducers. See [Pi Client](../client/README.md) and [Remote Protocol](../protocol/README.md) ([#7344](https://github.com/earendil-works/pi/pull/7344), [#7348](https://github.com/earendil-works/pi/pull/7348), [#7371](https://github.com/earendil-works/pi/pull/7371), [#7409](https://github.com/earendil-works/pi/pull/7409)).
+- Added experimental remote-session client APIs: the transport-neutral `PiClient`, CBOR protocol, Unix-socket transport, and `@noushi/cli/client` `RemoteSession` controller with transcript reducers. See [Pi Client](../client/README.md) and [Remote Protocol](../protocol/README.md) ([#7344](https://github.com/earendil-works/pi/pull/7344), [#7348](https://github.com/earendil-works/pi/pull/7348), [#7371](https://github.com/earendil-works/pi/pull/7371), [#7409](https://github.com/earendil-works/pi/pull/7409)).
 - Added `CredentialSynchronizationError` for credential changes that commit successfully but fail to synchronize local model state.
 - Added chainable `pi.registerMarkdownTransformer()` hooks for display-only transformation of user and assistant Markdown. See [`pi.registerMarkdownTransformer()`](docs/extensions.md#piregistermarkdowntransformertransformer) ([#7231](https://github.com/earendil-works/pi/pull/7231) by [@xl0](https://github.com/xl0)).
 - Added an experimental fullscreen TUI mode, selectable through `--tui-mode fullscreen` or `/settings` ([#7304](https://github.com/earendil-works/pi/issues/7304)).
@@ -2357,7 +2357,7 @@
 
 ### New Features
 
-- **Self-update support for the npm scope migration**: `pi update --self` now supports the upcoming package rename from `@mariozechner/pi-coding-agent` to `@earendil-works/pi-coding-agent`. After the new package is published, existing global installs can update through the normal self-update flow; pi will uninstall the old global package and install the package name returned by the version check endpoint.
+- **Self-update support for the npm scope migration**: `pi update --self` now supports the upcoming package rename from `@mariozechner/pi-coding-agent` to `@noushi/cli`. After the new package is published, existing global installs can update through the normal self-update flow; pi will uninstall the old global package and install the package name returned by the version check endpoint.
 - **Interactive OAuth login selection**: OAuth providers can now present multiple login choices in `/login`, enabling provider-specific interactive authentication flows. See [Providers](docs/providers.md).
 - **JSONC-style `models.json` parsing**: `models.json` now allows comments and trailing commas, making custom provider and model configuration easier to maintain. See [Providers](docs/providers.md) and [Custom Providers](docs/custom-provider.md).
 

@@ -144,7 +144,7 @@ For isolation setup and limitations, see [Run Pi in an isolated environment](../
 See [docs/extensions.md](../../docs/extensions.md) for full documentation.
 
 ```typescript
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI } from "@noushi/cli";
 import { Type } from "typebox";
 
 export default function (pi: ExtensionAPI) {

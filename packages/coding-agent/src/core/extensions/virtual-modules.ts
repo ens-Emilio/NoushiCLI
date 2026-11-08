@@ -7,7 +7,7 @@ import * as bundledTypebox from "typebox";
 import * as bundledTypeboxCompile from "typebox/compile";
 import * as bundledTypeboxValue from "typebox/value";
 // This import is safe because loader.ts exports are not re-exported from index.ts.
-// Extensions can therefore import from @earendil-works/pi-coding-agent.
+// Extensions can therefore import from @noushi/cli.
 import * as bundledPiCodingAgent from "../../index.ts";
 import * as bundledPiAiExtensionView from "./pi-ai-extension-view.ts";
 
@@ -30,7 +30,7 @@ export const VIRTUAL_MODULES: Record<string, unknown> = {
 	"@earendil-works/pi-ai/models": bundledPiAiModels,
 	"@earendil-works/pi-ai/oauth": bundledPiAiOauth,
 	"@earendil-works/pi-ai/providers/all": bundledPiAiProviders,
-	"@earendil-works/pi-coding-agent": bundledPiCodingAgent,
+	"@noushi/cli": bundledPiCodingAgent,
 	"@mariozechner/pi-agent-core": bundledPiAgentCore,
 	"@mariozechner/pi-tui": bundledPiTui,
 	"@mariozechner/pi-ai": bundledPiAiExtensionView,

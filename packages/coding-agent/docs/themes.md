@@ -8,20 +8,20 @@ The `noushi-green` theme is the default: a dark palette of graphite surfaces wit
 
 The `system` theme builds Noushi's colors from your terminal's theme instead, so Noushi matches the terminal:
 
-- Pi queries the terminal's default foreground and background colors and its 16 ANSI colors.
-- Each Pi color takes its hue from one ANSI color, for example errors from red and links from blue.
-- Pi sets each color's lightness so that it stands out from the background by a minimum contrast. Body text keeps at least a 4.5:1 WCAG contrast ratio on the background and every panel.
-- When the terminal switches between light and dark, Pi queries the colors again and rebuilds the theme.
+- Noushi queries the terminal's default foreground and background colors and its 16 ANSI colors.
+- Each Noushi color takes its hue from one ANSI color, for example errors from red and links from blue.
+- Noushi sets each color's lightness so that it stands out from the background by a minimum contrast. Body text keeps at least a 4.5:1 WCAG contrast ratio on the background and every panel.
+- When the terminal switches between light and dark, Noushi queries the colors again and rebuilds the theme.
 
 The theme adapts to what the terminal reports:
 
 | Terminal reports | Result |
 |---|---|
 | Background and ANSI colors | Colors from the terminal palette, placed for the actual background. |
-| Background only | Pi's own hues, placed for the actual background. |
+| Background only | Noushi's own hues, placed for the actual background. |
 | Nothing | ANSI color indices and the terminal's default colors, which the terminal renders itself. Secondary text is faint, and panels have no background color. |
 
-Pi asks the terminal for its colors when it starts. Terminals usually answer within a few milliseconds, and Pi waits at most 100 ms before showing the startup header. If the terminal does not answer in time, Pi uses the ANSI color fallback, and it still applies the colors if they arrive later, for example over a slow SSH connection. `system` is a reserved name: a custom theme with that name is ignored.
+Noushi asks the terminal for its colors when it starts. Terminals usually answer within a few milliseconds, and Noushi waits at most 100 ms before showing the startup header. If the terminal does not answer in time, Noushi uses the ANSI color fallback, and it still applies the colors if they arrive later, for example over a slow SSH connection. `system` is a reserved name: a custom theme with that name is ignored.
 
 <a id="selecting-a-theme"></a>
 
@@ -47,7 +47,7 @@ Automatic mode stores the light theme first and the dark theme second:
 }
 ```
 
-Pi decides whether the terminal is light or dark from its reported background and foreground colors. If the terminal does not report its background, Pi uses the terminal's light/dark notification, then the `COLORFGBG` environment variable, then dark. The same decision picks the theme of a light/dark pair and the appearance of `system`. When automatic mode is active, Pi changes themes when the terminal reports an appearance change. Theme names cannot contain `/` because Pi reserves it for this setting format.
+Noushi decides whether the terminal is light or dark from its reported background and foreground colors. If the terminal does not report its background, Noushi uses the terminal's light/dark notification, then the `COLORFGBG` environment variable, then dark. The same decision picks the theme of a light/dark pair and the appearance of `system`. When automatic mode is active, Noushi changes themes when the terminal reports an appearance change. Theme names cannot contain `/` because Noushi reserves it for this setting format.
 
 Use `--use-theme` to choose the initial theme for one invocation without changing the saved setting:
 
@@ -62,20 +62,20 @@ See [CLI resources](cli.md#resources) for the command-line option.
 
 Copy one of the [built-in themes](https://github.com/earendil-works/pi/tree/main/packages/coding-agent/src/modes/interactive/theme) or create a new JSON file conforming to the [schema](https://pi.dev/schemas/theme.schema.json). The built-in themes use OKHSL colors, with variables for colors that several roles share, so you can adjust a hue, saturation, or lightness directly.
 
-1. Save the file as `<agent-dir>/themes/my-theme.json`. The agent directory defaults to `~/.pi/agent`.
+1. Save the file as `<agent-dir>/themes/my-theme.json`. The agent directory defaults to `~/.noushi/agent`.
 2. Set its `name` to `my-theme`.
 3. Change values in `vars` and `colors`.
 4. Select `my-theme` through `/settings`.
 
-Use the theme name as the filename. Pi hot-reloads the active user theme only from `<agent-dir>/themes/<name>.json`. Run `/reload` after adding or changing a theme from any other source.
+Use the theme name as the filename. Noushi hot-reloads the active user theme only from `<agent-dir>/themes/<name>.json`. Run `/reload` after adding or changing a theme from any other source.
 
 ## Understand the theme file
 
 | Property | Required | Responsibility |
 |---|---|---|
-| `$schema` | No | Enables editor validation and completion against Pi's published schema. |
+| `$schema` | No | Enables editor validation and completion against Noushi's published schema. |
 | `name` | Yes | Identifies the theme in selectors and settings. It must be unique, cannot contain `/`, and cannot be `system`. |
-| `appearance` | No | `"dark"` or `"light"`: the background the theme is designed for. Pi detects it from the theme colors when omitted. |
+| `appearance` | No | `"dark"` or `"light"`: the background the theme is designed for. Noushi detects it from the theme colors when omitted. |
 | `vars` | No | Defines reusable color values. Variables can reference other variables. |
 | `colors` | Yes | Assigns colors to terminal UI roles. The schema identifies required and optional roles. |
 | `export` | No | Overrides page and panel backgrounds in HTML exports. |
@@ -93,13 +93,13 @@ A color can be written in six forms:
 | Variable reference | `"primary"` | The value of an entry in `vars`. |
 | Terminal default | `""` | The terminal's default foreground or background color. |
 
-Terminal default colors render as the terminal's own colors. Where Pi needs a concrete value, such as HTML export or extension color math, it uses the default colors the terminal reports, or a black or white guess based on the theme's appearance.
+Terminal default colors render as the terminal's own colors. Where Noushi needs a concrete value, such as HTML export or extension color math, it uses the default colors the terminal reports, or a black or white guess based on the theme's appearance.
 
-Pi resolves chained variable references. A missing variable or circular reference makes the theme invalid. Pi uses truecolor when available, gamut-maps OKLCH to sRGB, and approximates colors for 256-color terminals. HTML exports convert OKHSL values to hexadecimal because CSS does not support them. If colors differ from their source values, check your terminal's truecolor detection and contrast settings. See [Configure Your Terminal](terminal-setup.md#override-detected-capabilities).
+Noushi resolves chained variable references. A missing variable or circular reference makes the theme invalid. Noushi uses truecolor when available, gamut-maps OKLCH to sRGB, and approximates colors for 256-color terminals. HTML exports convert OKHSL values to hexadecimal because CSS does not support them. If colors differ from their source values, check your terminal's truecolor detection and contrast settings. See [Configure Your Terminal](terminal-setup.md#override-detected-capabilities).
 
 Use the [theme JSON schema](https://pi.dev/schemas/theme.schema.json) for the exact properties, required colors, and accepted value types.
 
-Pi reports invalid theme files during startup and `/reload`.
+Noushi reports invalid theme files during startup and `/reload`.
 
 ## Find the color to change
 
@@ -129,12 +129,12 @@ Five colors are optional and inherit another color when omitted:
 | `searchMatchText` | `text` |
 | `thinkingMax` | `thinkingXhigh` |
 
-If `export` colors are omitted, Pi derives HTML page and panel backgrounds from `userMessageBg`.
+If `export` colors are omitted, Noushi derives HTML page and panel backgrounds from `userMessageBg`.
 
 ## Load a theme from a project or package
 
 Place a project theme in `.pi/themes/`. Project themes load only after [project trust](security.md#understand-project-trust) is granted.
 
-You can also load theme files and directories through the `themes` setting or distribute them in a Pi package. See [Configuration](configuration.md), [Settings](settings.md#resources), and [Pi Packages](packages.md).
+You can also load theme files and directories through the `themes` setting or distribute them in a Noushi package. See [Configuration](configuration.md), [Settings](settings.md#resources), and [Noushi Packages](packages.md).
 
-Each loaded theme must have a unique name. Pi reports duplicate names as resource collisions.
+Each loaded theme must have a unique name. Noushi reports duplicate names as resource collisions.

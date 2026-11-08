@@ -55,7 +55,7 @@ describe("extensions discovery", () => {
 		fs.writeFileSync(
 			path.join(extensionsDir, "coding-agent-import.ts"),
 			`
-				import { getAgentDir } from "@earendil-works/pi-coding-agent";
+				import { getAgentDir } from "@noushi/cli";
 				void getAgentDir;
 				export default function(pi) {
 					pi.registerCommand("test", { handler: async () => {} });
@@ -78,18 +78,18 @@ describe("extensions discovery", () => {
 			JSON.stringify({
 				name: "application",
 				type: "module",
-				dependencies: { "@earendil-works/pi-coding-agent": "1.0.0" },
+				dependencies: { "@noushi/cli": "1.0.0" },
 			}),
 		);
 		fs.writeFileSync(
 			path.join(dependencyDir, "package.json"),
-			JSON.stringify({ name: "@earendil-works/pi-coding-agent", type: "module", exports: "./index.js" }),
+			JSON.stringify({ name: "@noushi/cli", type: "module", exports: "./index.js" }),
 		);
 		fs.writeFileSync(path.join(dependencyDir, "index.js"), "export const physicalDependency = true;");
 		fs.writeFileSync(
 			path.join(extensionsDir, "compiled-esm-extension.js"),
 			`
-				import { physicalDependency } from "@earendil-works/pi-coding-agent";
+				import { physicalDependency } from "@noushi/cli";
 				export default function(pi) {
 					if (physicalDependency) pi.registerCommand("physical-dependency", { handler: async () => {} });
 				}

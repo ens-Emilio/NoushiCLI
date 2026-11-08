@@ -29,6 +29,10 @@
 			"@notes/app/*": ["./packages/chord/test/examples/53-app/app/*.ts"],
 			"@board/app/*": ["./packages/chord/test/examples/56-web/app/*.ts"],
 			"@chat/app/*": ["./packages/chord/test/examples/59-chat/app/*.ts"],
+			"@todo/app/*": [
+				"./packages/chord/test/examples/61-tutorial/src/api/*",
+				"./packages/chord/test/examples/61-tutorial/src/api/*/index.ts"
+			],
 			"@earendil-works/pi-telemetry": ["./packages/telemetry/src/index.ts"],
 			"@earendil-works/pi-telemetry/testing": ["./packages/telemetry/src/testing/index.ts"],
 			"@earendil-works/pi-telemetry/render": ["./packages/telemetry/src/render.ts"],
@@ -56,9 +60,9 @@
 			],
 			"@earendil-works/pi-env": ["./packages/env/src/index.ts"],
 			"@earendil-works/pi-agent-core": ["./packages/agent/src/index.ts"],
-			"@earendil-works/pi-coding-agent": ["./packages/coding-agent/src/index.ts"],
-			"@earendil-works/pi-coding-agent/hooks": ["./packages/coding-agent/src/core/hooks/index.ts"],
-			"@earendil-works/pi-coding-agent/*": ["./packages/coding-agent/src/*"],
+			"@noushi/cli": ["./packages/coding-agent/src/index.ts"],
+			"@noushi/cli/hooks": ["./packages/coding-agent/src/core/hooks/index.ts"],
+			"@noushi/cli/*": ["./packages/coding-agent/src/*"],
 			"typebox": ["./node_modules/typebox"],
 			"@earendil-works/pi-tui": ["./packages/tui/src/index.ts"],
 			"@earendil-works/pi-tui/*": ["./packages/tui/src/*"],

@@ -34,7 +34,7 @@ test("pins published and private dependencies without touching registry aliases,
 			version: "2.0.0",
 		});
 		await writeManifest(root, "packages/coding-agent", {
-			name: "@earendil-works/pi-coding-agent",
+			name: "@noushi/cli",
 			version: "2.0.0",
 			dependencies: {
 				"@earendil-works/pi-ai": "^2.0.0",
@@ -51,7 +51,7 @@ test("pins published and private dependencies without touching registry aliases,
 			version: "9.9.9",
 			private: true,
 			dependencies: {
-				"@earendil-works/pi-coding-agent": "^1.0.0",
+				"@noushi/cli": "^1.0.0",
 				"@mariozechner/pi-ai": "npm:@earendil-works/pi-ai@1.0.0",
 			},
 		});
@@ -68,7 +68,7 @@ test("pins published and private dependencies without touching registry aliases,
 			version: "0.0.0",
 			private: true,
 			dependencies: {
-				"@earendil-works/pi-coding-agent": "^1.0.0",
+				"@noushi/cli": "^1.0.0",
 			},
 		});
 
@@ -80,13 +80,13 @@ test("pins published and private dependencies without touching registry aliases,
 			assert.equal(agentManifest[section]["@earendil-works/pi-ai"], "2.0.0");
 		}
 		const evalsManifest = await readManifest(root, "packages/evals");
-		assert.equal(evalsManifest.dependencies["@earendil-works/pi-coding-agent"], "2.0.0");
+		assert.equal(evalsManifest.dependencies["@noushi/cli"], "2.0.0");
 		assert.equal(evalsManifest.dependencies["@mariozechner/pi-ai"], "npm:@earendil-works/pi-ai@1.0.0");
 		const appManifest = await readManifest(root, "apps/p2");
 		assert.equal(appManifest.dependencies["@earendil-works/pi-ai"], "2.0.0");
 		assert.equal(appManifest.version, "0.0.1");
 		const generatedManifest = await readManifest(root, "packages/coding-agent/install-lock");
-		assert.equal(generatedManifest.dependencies["@earendil-works/pi-coding-agent"], "^1.0.0");
+		assert.equal(generatedManifest.dependencies["@noushi/cli"], "^1.0.0");
 
 		const alreadySynced = runSyncVersions(root);
 		assert.equal(alreadySynced.status, 0, alreadySynced.stderr);

@@ -47,10 +47,7 @@ describe("DefaultResourceLoader", () => {
 		it("should not treat a project manifest as the owner of a project extension", async () => {
 			const extensionsDir = join(cwd, ".noushi", "extensions");
 			mkdirSync(extensionsDir, { recursive: true });
-			writeFileSync(
-				join(cwd, "package.json"),
-				JSON.stringify({ dependencies: { "@earendil-works/pi-coding-agent": "1.0.0" } }),
-			);
+			writeFileSync(join(cwd, "package.json"), JSON.stringify({ dependencies: { "@noushi/cli": "1.0.0" } }));
 			writeFileSync(join(extensionsDir, "project-extension.ts"), "export default function() {}");
 
 			const loader = new DefaultResourceLoader({ cwd, agentDir });
@@ -65,10 +62,7 @@ describe("DefaultResourceLoader", () => {
 			const packageRoot = join(tempDir, "extension-package");
 			const extensionsDir = join(packageRoot, "extensions");
 			mkdirSync(extensionsDir, { recursive: true });
-			writeFileSync(
-				join(packageRoot, "package.json"),
-				JSON.stringify({ dependencies: { "@earendil-works/pi-coding-agent": "1.0.0" } }),
-			);
+			writeFileSync(join(packageRoot, "package.json"), JSON.stringify({ dependencies: { "@noushi/cli": "1.0.0" } }));
 			writeFileSync(join(extensionsDir, "package-extension.ts"), "export default function() {}");
 
 			const loader = new DefaultResourceLoader({
@@ -83,7 +77,7 @@ describe("DefaultResourceLoader", () => {
 				{
 					path: join(packageRoot, "package.json"),
 					warning:
-						'Host-provided extension packages must be declared in peerDependencies with a "*" range, not dependencies: @earendil-works/pi-coding-agent. Installed copies can bypass the extension loader and create duplicate runtime modules.',
+						'Host-provided extension packages must be declared in peerDependencies with a "*" range, not dependencies: @noushi/cli. Installed copies can bypass the extension loader and create duplicate runtime modules.',
 				},
 			]);
 		});
@@ -1022,7 +1016,7 @@ Content`,
 			writeFileSync(
 				join(ext1Dir, "index.ts"),
 				`
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI } from "@noushi/cli";
 import { Type } from "typebox";
 export default function(pi: ExtensionAPI) {
   pi.registerTool({
@@ -1037,7 +1031,7 @@ export default function(pi: ExtensionAPI) {
 			writeFileSync(
 				join(ext2Dir, "index.ts"),
 				`
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI } from "@noushi/cli";
 import { Type } from "typebox";
 export default function(pi: ExtensionAPI) {
   pi.registerTool({
@@ -1064,7 +1058,7 @@ export default function(pi: ExtensionAPI) {
 			writeFileSync(
 				join(globalExtDir, "global.ts"),
 				`
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI } from "@noushi/cli";
 import { Type } from "typebox";
 export default function(pi: ExtensionAPI) {
   pi.registerTool({
@@ -1083,7 +1077,7 @@ export default function(pi: ExtensionAPI) {
 			writeFileSync(
 				explicitExtPath,
 				`
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI } from "@noushi/cli";
 import { Type } from "typebox";
 export default function(pi: ExtensionAPI) {
   pi.registerTool({
@@ -1132,7 +1126,7 @@ export default function(pi: ExtensionAPI) {
 			writeFileSync(
 				join(globalExtDir, "other-mcp.ts"),
 				`
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI } from "@noushi/cli";
 export default function(pi: ExtensionAPI) {
   pi.registerCommand("mcp", { description: "other mcp", handler: async () => {} });
 }`,

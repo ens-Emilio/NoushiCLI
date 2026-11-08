@@ -603,7 +603,7 @@ try {
 }
 
 const piConfigName: string | undefined = pkg.piConfig?.name;
-export const PACKAGE_NAME: string = pkg.name || "@earendil-works/pi-coding-agent";
+export const PACKAGE_NAME: string = pkg.name || "@noushi/cli";
 const cliCommandName = Object.keys(pkg.bin ?? {})[0];
 export const CLI_COMMAND_NAME = cliCommandName ?? "pi";
 export const APP_NAME: string = piConfigName || "pi";

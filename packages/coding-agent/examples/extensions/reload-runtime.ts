@@ -5,7 +5,7 @@
  * tool that requests a reload once the agent has settled.
  */
 
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI } from "@noushi/cli";
 import { Type } from "typebox";
 
 export default function (pi: ExtensionAPI) {

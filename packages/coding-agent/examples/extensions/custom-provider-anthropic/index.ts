@@ -46,7 +46,7 @@ import {
 	type ToolResultMessage,
 	type TranscriptContext,
 } from "@earendil-works/pi-ai";
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI } from "@noushi/cli";
 
 // =============================================================================
 // OAuth implementation adapted for the legacy extension compatibility interface.

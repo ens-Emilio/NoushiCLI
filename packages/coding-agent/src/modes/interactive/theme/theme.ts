@@ -647,7 +647,7 @@ export function getTerminalTheme(): TerminalTheme {
 // ============================================================================
 
 // Use globalThis to share theme across module loaders (node + jiti in dev mode)
-const THEME_KEY = Symbol.for("@earendil-works/pi-coding-agent:theme");
+const THEME_KEY = Symbol.for("@noushi/cli:theme");
 const THEME_KEY_OLD = Symbol.for("@mariozechner/pi-coding-agent:theme");
 
 // Export theme as a getter that reads from globalThis

@@ -12,7 +12,7 @@
           "path": "quickstart.md"
         },
         {
-          "title": "How Pi Works",
+          "title": "How Noushi Works",
           "path": "how-pi-works.md"
         }
       ]
@@ -21,10 +21,10 @@
       "title": "Guides",
       "items": [
         {
-          "title": "Run Pi",
+          "title": "Run Noushi",
           "items": [
             {
-              "title": "Use Pi in the Terminal",
+              "title": "Use Noushi in the Terminal",
               "path": "usage.md"
             },
             {
@@ -36,11 +36,11 @@
               "path": "sessions.md"
             },
             {
-              "title": "Run Pi Safely",
+              "title": "Run Noushi Safely",
               "path": "security.md"
             },
             {
-              "title": "Isolate Pi",
+              "title": "Isolate Noushi",
               "path": "containerization.md"
             },
             {
@@ -60,24 +60,24 @@
               "path": "shell-aliases.md"
             },
             {
-              "title": "Run Pi in tmux",
+              "title": "Run Noushi in tmux",
               "path": "tmux.md"
             },
             {
-              "title": "Run Pi on Windows",
+              "title": "Run Noushi on Windows",
               "path": "windows.md"
             },
             {
-              "title": "Run Pi on Android",
+              "title": "Run Noushi on Android",
               "path": "termux.md"
             }
           ]
         },
         {
-          "title": "Customize Pi",
+          "title": "Customize Noushi",
           "items": [
             {
-              "title": "Configure Pi",
+              "title": "Configure Noushi",
               "path": "configuration.md"
             },
             {
@@ -93,7 +93,7 @@
               "path": "themes.md"
             },
             {
-              "title": "Use Pi Packages",
+              "title": "Use Noushi Packages",
               "path": "packages.md"
             },
             {
@@ -103,7 +103,7 @@
           ]
         },
         {
-          "title": "Build on Pi",
+          "title": "Build on Noushi",
           "items": [
             {
               "title": "Build Extensions",

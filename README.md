@@ -118,7 +118,7 @@ Run Noushi using the local launcher:
 To use `noushi` from anywhere on your system:
 
 ```sh
-npm link --workspace @earendil-works/pi-coding-agent
+npm link --workspace @noushi/cli
 ```
 
 Ensure your global npm bin directory is in your `$PATH`.
