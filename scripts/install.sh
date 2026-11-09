@@ -82,7 +82,7 @@ if [ ! -f "$binary" ]; then
 	exit 1
 fi
 
-mkdir -p "$TARGET_DIR"
+mkdir -p "$TARGET_DIR" "$APP_DIR"
 install -m 0755 "$binary" "$APP_DIR/noushi"
 # Runtime assets the binary resolves next to itself (themes, export templates, package metadata).
 for asset in package.json theme assets export-html photon_rs_bg.wasm; do
