@@ -66,7 +66,13 @@ The project is pinned to the upstream `earendil-works/pi` engine (revision `676a
 
 ## Installation & Setup
 
-Clone the repository and install dependencies:
+Install the standalone binary (macOS and Linux; no Node.js required):
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/ens-Emilio/NoushiCLI/main/scripts/install.sh | sh
+```
+
+Or clone the repository and install dependencies:
 
 ```sh
 git clone https://github.com/ens-Emilio/NoushiCLI.git
