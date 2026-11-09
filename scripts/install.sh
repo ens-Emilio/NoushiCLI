@@ -14,6 +14,8 @@ set -eu
 REPO="ens-Emilio/NoushiCLI"
 DEFAULT_DIR="${HOME}/.local/bin"
 TARGET_DIR="${NOUSHI_INSTALL_DIR:-$DEFAULT_DIR}"
+# Runtime assets live next to the binary in an app dir; only the launcher is symlinked into PATH.
+APP_DIR="${NOUSHI_APP_DIR:-$HOME/.noushi/bin}"
 VERSION="${NOUSHI_VERSION:-latest}"
 
 print_help() {
@@ -81,24 +83,22 @@ if [ ! -f "$binary" ]; then
 fi
 
 mkdir -p "$TARGET_DIR"
-install -m 0755 "$binary" "$TARGET_DIR/noushi"
-# Runtime assets the binary resolves next to itself (themes, export templates, docs).
-for asset in package.json theme assets export-html; do
+install -m 0755 "$binary" "$APP_DIR/noushi"
+# Runtime assets the binary resolves next to itself (themes, export templates, package metadata).
+for asset in package.json theme assets export-html photon_rs_bg.wasm; do
 	src="$tmp/pi/$asset"
 	if [ -e "$src" ]; then
-		dirname="$TARGET_DIR"
-		case "$asset" in
-		theme) dirname="$TARGET_DIR/theme" ;;
-		assets) dirname="$TARGET_DIR/assets" ;;
-		export-html) dirname="$TARGET_DIR/export-html" ;;
-		esac
-		mkdir -p "$dirname"
-		cp -R "$src/." "$dirname/" 2>/dev/null || cp -R "$src" "$dirname/"
+		if [ -d "$src" ]; then
+			mkdir -p "$APP_DIR/$asset"
+			cp -R "$src/." "$APP_DIR/$asset/"
+		else
+			install -m 0644 "$src" "$APP_DIR/$asset"
+		fi
 	fi
 done
-[ -f "$tmp/pi/photon_rs_bg.wasm" ] && install -m 0644 "$tmp/pi/photon_rs_bg.wasm" "$TARGET_DIR/photon_rs_bg.wasm"
+ln -sfn "$APP_DIR/noushi" "$TARGET_DIR/noushi"
 
-echo "==> Installed $TARGET_DIR/noushi"
+echo "==> Installed noushi ($APP_DIR/noushi -> $TARGET_DIR/noushi)"
 case ":$PATH:" in
 *":$TARGET_DIR:"*) ;;
 *) echo "NOTE: $TARGET_DIR is not on your PATH. Add: export PATH=\"$TARGET_DIR:\$PATH\"" ;;
